@@ -480,7 +480,7 @@ begin
     TestWorkbook := TsWorkbook.Create;
     case UpperCase(ExtractFileExt(FileName)) of
       '.XLSX': TestWorkbook.ReadFromFile(FileName, sfOOXML);
-      '.ODS': TestWorkbook.ReadFromFile(FileName, sfOpenDocument);
+      '.ODS' : TestWorkbook.ReadFromFile(FileName, sfOpenDocument);
       // Excel XLS/BIFF
       else TestWorkbook.ReadFromFile(FileName, sfExcel8);
     end;

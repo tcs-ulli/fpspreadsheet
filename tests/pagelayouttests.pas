@@ -50,6 +50,10 @@ type
     procedure TestWriteRead_BIFF2_HeaderFooterSymbols_2sheets;
     procedure TestWriteRead_BIFF2_HeaderFooterSymbols_3sheets;
 
+    procedure TestWriteRead_BIFF2_HeaderFooterFontSymbols_1sheet;
+    procedure TestWriteRead_BIFF2_HeaderFooterFontSymbols_2sheets;
+    procedure TestWriteRead_BIFF2_HeaderFooterFontSymbols_3sheets;
+
     // no BIFF2 page orientation tests because this info is not readily available in the file
 
 
@@ -99,6 +103,14 @@ type
     procedure TestWriteRead_BIFF5_HeaderFooterSymbols_2sheets;
     procedure TestWriteRead_BIFF5_HeaderFooterSymbols_3sheets;
 
+    procedure TestWriteRead_BIFF5_HeaderFooterFontSymbols_1sheet;
+    procedure TestWriteRead_BIFF5_HeaderFooterFontSymbols_2sheets;
+    procedure TestWriteRead_BIFF5_HeaderFooterFontSymbols_3sheets;
+
+    procedure TestWriteRead_BIFF5_HeaderFooterFontColor_1sheet;
+    procedure TestWriteRead_BIFF5_HeaderFooterFontColor_2sheets;
+    procedure TestWriteRead_BIFF5_HeaderFooterFontColor_3sheets;
+
     { BIFF8 page layout tests }
     procedure TestWriteRead_BIFF8_PageMargins_1sheet_0;
     procedure TestWriteRead_BIFF8_PageMargins_1sheet_1;
@@ -144,6 +156,14 @@ type
     procedure TestWriteRead_BIFF8_HeaderFooterSymbols_1sheet;
     procedure TestWriteRead_BIFF8_HeaderFooterSymbols_2sheets;
     procedure TestWriteRead_BIFF8_HeaderFooterSymbols_3sheets;
+
+    procedure TestWriteRead_BIFF8_HeaderFooterFontSymbols_1sheet;
+    procedure TestWriteRead_BIFF8_HeaderFooterFontSymbols_2sheets;
+    procedure TestWriteRead_BIFF8_HeaderFooterFontSymbols_3sheets;
+
+    procedure TestWriteRead_BIFF8_HeaderFooterFontColor_1sheet;
+    procedure TestWriteRead_BIFF8_HeaderFooterFontColor_2sheets;
+    procedure TestWriteRead_BIFF8_HeaderFooterFontColor_3sheets;
 
     { OOXML page layout tests }
     procedure TestWriteRead_OOXML_PageMargins_1sheet_0;
@@ -191,6 +211,14 @@ type
     procedure TestWriteRead_OOXML_HeaderFooterSymbols_2sheets;
     procedure TestWriteRead_OOXML_HeaderFooterSymbols_3sheets;
 
+    procedure TestWriteRead_OOXML_HeaderFooterFontSymbols_1sheet;
+    procedure TestWriteRead_OOXML_HeaderFooterFontSymbols_2sheets;
+    procedure TestWriteRead_OOXML_HeaderFooterFontSymbols_3sheets;
+
+    procedure TestWriteRead_OOXML_HeaderFooterFontColor_1sheet;
+    procedure TestWriteRead_OOXML_HeaderFooterFontColor_2sheets;
+    procedure TestWriteRead_OOXML_HeaderFooterFontColor_3sheets;
+
     { OpenDocument page layout tests }
     procedure TestWriteRead_ODS_PageMargins_1sheet_0;
     procedure TestWriteRead_ODS_PageMargins_1sheet_1;
@@ -237,6 +265,13 @@ type
     procedure TestWriteRead_ODS_HeaderFooterSymbols_2sheets;
     procedure TestWriteRead_ODS_HeaderFooterSymbols_3sheets;
 
+    procedure TestWriteRead_ODS_HeaderFooterFontSymbols_1sheet;
+    procedure TestWriteRead_ODS_HeaderFooterFontSymbols_2sheets;
+    procedure TestWriteRead_ODS_HeaderFooterFontSymbols_3sheets;
+
+    procedure TestWriteRead_ODS_HeaderFooterFontColor_1sheet;
+    procedure TestWriteRead_ODS_HeaderFooterFontColor_2sheets;
+    procedure TestWriteRead_ODS_HeaderFooterFontColor_3sheets;
   end;
 
 implementation
@@ -267,6 +302,8 @@ end;
 	                  3 ... header, footer }
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_PageMargins(
   AFormat: TsSpreadsheetFormat; ANumSheets, AHeaderFooterMode: Integer);
+const
+  EPS = 1e-6;
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -324,16 +361,16 @@ begin
         fail('Error in test code. Failed to get worksheet by index');
 	
       actualPageLayout := MyWorksheet.PageLayout;
-      CheckEquals(sollPageLayout.TopMargin, actualPageLayout.TopMargin, 'Top margin mismatch, sheet "'+MyWorksheet.Name+'"');
-      CheckEquals(sollPageLayout.BottomMargin, actualPageLayout.Bottommargin, 'Bottom margin mismatch, sheet "'+MyWorksheet.Name+'"');
-      CheckEquals(sollPageLayout.LeftMargin, actualPageLayout.LeftMargin, 'Left margin mismatch, sheet "'+MyWorksheet.Name+'"');
-      CheckEquals(sollPageLayout.RightMargin, actualPageLayout.RightMargin, 'Right margin mismatch, sheet "'+MyWorksheet.Name+'"');
+      CheckEquals(sollPageLayout.TopMargin, actualPageLayout.TopMargin, EPS, 'Top margin mismatch, sheet "'+MyWorksheet.Name+'"');
+      CheckEquals(sollPageLayout.BottomMargin, actualPageLayout.Bottommargin, EPS, 'Bottom margin mismatch, sheet "'+MyWorksheet.Name+'"');
+      CheckEquals(sollPageLayout.LeftMargin, actualPageLayout.LeftMargin, EPS, 'Left margin mismatch, sheet "'+MyWorksheet.Name+'"');
+      CheckEquals(sollPageLayout.RightMargin, actualPageLayout.RightMargin, EPS, 'Right margin mismatch, sheet "'+MyWorksheet.Name+'"');
       if (AFormat <> sfExcel2) then  // No header/footer margin in BIFF2
       begin
         if AHeaderFooterMode in [1, 3] then
-          CheckEquals(sollPageLayout.HeaderMargin, actualPageLayout.HeaderMargin, 'Header margin mismatch, sheet "'+MyWorksheet.Name+'"');
+          CheckEquals(sollPageLayout.HeaderMargin, actualPageLayout.HeaderMargin, EPS, 'Header margin mismatch, sheet "'+MyWorksheet.Name+'"');
         if AHeaderFooterMode in [2, 3] then
-          CheckEquals(sollPageLayout.FooterMargin, actualPageLayout.FooterMargin, 'Footer margin mismatch, sheet "'+MyWorksheet.Name+'"');
+          CheckEquals(sollPageLayout.FooterMargin, actualPageLayout.FooterMargin, EPS, 'Footer margin mismatch, sheet "'+MyWorksheet.Name+'"');
       end;
     end;
 
@@ -437,6 +474,38 @@ begin
                   Footers[HEADER_FOOTER_INDEX_ALL] := '&LSheet "&A"&C100&&';
                 end;
            end;
+        8: // Header/footer font symbol test
+           begin
+             Headers[HEADER_FOOTER_INDEX_ALL] :=
+               '&LH&Y2&YO cm&X2&X'+
+               '&C&"Times New Roman"&18This is big'+
+               '&RThis is &Bbold&B,'+ LineEnding+'&Iitalic&I,'+LineEnding+
+                 '&Uunderlined&U,'+LineEnding+'&Edouble underlined&E,'+
+                 '&Sstriked-out&S,'+LineEnding+'&Ooutlined&O,'+LineEnding+
+                 '&Hshadow&S';
+             Footers[HEADER_FOOTER_INDEX_ALL] :=
+               '&L&"Arial"&8Arial small'+
+               '&C&"Courier new"&32Courier big'+
+               '&R&"Times New Roman"&10Times standard';
+             case p of
+               0: Footers[HEADER_FOOTER_INDEX_ALL] := '';
+               1: Headers[HEADER_FOOTER_INDEX_ALL] := '';
+             end;
+           end;
+        9: // Header/footer font color test
+           begin
+             Headers[HEADER_FOOTER_INDEX_ALL] :=
+               '&L&KFF0000This is red'+
+               '&C&K00FF00This is green'+
+               '&R&K0000FFThis is blue';
+             Footers[HEADER_FOOTER_INDEX_ALL] :=
+               '&LThis is &"Times New Roman"&KFF0000red&K000000, &K00FF00green&K000000, &K0000FFblue&K000000.';
+             case p of
+               0: Footers[HEADER_FOOTER_INDEX_ALL] := '';
+               1: Headers[HEADER_FOOTER_INDEX_ALL] := '';
+             end;
+           end;
+
       end;
     end;
   end;
@@ -508,7 +577,7 @@ begin
             CheckEquals(sollPageLayout[p].StartPageNumber, actualPageLayout.StartPageNumber,
               'StartPageNumber value mismatch, sheet "' + MyWorksheet.Name + '"');
           end;
-        6, 7: // Header/footer tests
+        6, 7, 8, 9: // Header/footer tests
           begin
             CheckEquals(sollPageLayout[p].Headers[1], actualPageLayout.Headers[1],
               'Header value mismatch, sheet "' + MyWorksheet.Name + '"');
@@ -619,6 +688,22 @@ end;
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF2_HeaderFooterSymbols_3sheets;
 begin
   TestWriteRead_PageLayout(sfExcel2, 3, 7);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF2_HeaderFooterFontSymbols_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel2, 1, 8);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF2_HeaderFooterFontSymbols_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel2, 2, 8);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF2_HeaderFooterFontSymbols_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel2, 3, 8);
 end;
 
 
@@ -815,6 +900,38 @@ begin
 end;
 
 
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeaderFooterFontSymbols_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 1, 8);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeaderFooterFontSymbols_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 2, 8);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeaderFooterFontSymbols_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 3, 8);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeaderFooterFontColor_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 1, 9);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeaderFooterFontColor_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 2, 9);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeaderFooterFontColor_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 3, 9);
+end;
+
+
 { Tests for BIFF8 file format }
 
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PageMargins_1sheet_0;
@@ -1005,6 +1122,38 @@ end;
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterSymbols_3sheets;
 begin
   TestWriteRead_PageLayout(sfExcel8, 3, 7);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterFontSymbols_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 1, 8);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterFontSymbols_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 2, 8);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterFontSymbols_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 3, 8);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterFontColor_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 1, 9);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterFontColor_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 2, 9);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterFontColor_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 3, 9);
 end;
 
 
@@ -1201,6 +1350,38 @@ begin
 end;
 
 
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeaderFooterFontSymbols_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 1, 8);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeaderFooterFontSymbols_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 2, 8);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeaderFooterFontSymbols_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 3, 8);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeaderFooterFontColor_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 1, 9);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeaderFooterFontColor_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 2, 9);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeaderFooterFontColor_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 3, 9);
+end;
+
+
 { Tests for Open Document file format }
 
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PageMargins_1sheet_0;
@@ -1391,6 +1572,38 @@ end;
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterSymbols_3sheets;
 begin
   TestWriteRead_PageLayout(sfOpenDocument, 3, 7);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterFontSymbols_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 1, 8);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterFontSymbols_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 2, 8);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterFontSymbols_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 3, 8);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterFontColor_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 1, 9);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterFontColor_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 2, 9);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterFontColor_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 3, 9);
 end;
 
 

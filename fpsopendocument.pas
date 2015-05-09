@@ -32,14 +32,14 @@ interface
 uses
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
-  AVL_Tree, math, dateutils,
+  AVL_Tree, math, dateutils, contnrs,
  {$IF FPC_FULLVERSION >= 20701}
   zipper,
  {$ELSE}
   fpszipper,
  {$ENDIF}
-  fpstypes, fpspreadsheet, fpsReaderWriter,
-  fpsutils, fpsNumFormat, fpsNumFormatParser, fpsxmlcommon;
+  fpstypes, fpspreadsheet, fpsReaderWriter, fpsutils, fpsHeaderFooterParser,
+  fpsNumFormat, fpsNumFormatParser, fpsxmlcommon;
   
 type
   TDateMode=(
@@ -48,7 +48,25 @@ type
     dm1904 {e.g. Quattro Pro, Mac Excel compatibility}
   );
 
+  { TsSpreadOpenDocHeaderFooterParser }
+
+  TsSpreadOpenDocHeaderFooterParser = class(TsHeaderFooterParser)
+  private
+    FNode: TDOMNode;
+    XMLMode: Boolean;
+  protected
+    procedure AddNodeElement(ANode: TDOMNode);
+    function FindStyle(AStyleName: String): Integer;
+    function GetCurrFontIndex: Integer; override;
+    procedure Parse; override;
+  public
+    constructor Create(ANode: TDOMNode; AFontList: TList;
+      ADefaultFont: TsHeaderFooterFont); overload;
+    function BuildHeaderFooterAsXMLString: String;
+  end;
+
   { TsSpreadOpenDocNumFormatParser }
+
   TsSpreadOpenDocNumFormatParser = class(TsNumFormatParser)
   protected
     function BuildXMLAsStringFromSection(ASection: Integer;
@@ -67,7 +85,7 @@ type
     FRowList: TFPList;
     FPageLayoutList: TFPList;
     FMasterPageList: TFPList;
-    FHeaderFooterFontList: TStringList;
+    FHeaderFooterFontList: TObjectList;
     FDateMode: TDateMode;
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
@@ -88,6 +106,9 @@ type
     // Figures out the base year for times in this file (dates are unambiguous)
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
     function ReadFont(ANode: TDOMnode; APreferredIndex: Integer = -1): Integer;
+    procedure ReadHeaderFooterFont(ANode: TDOMNode; var AFontName: String;
+      var AFontSize: Double; var AFontStyle: TsHeaderFooterFontStyles;
+      var AFontColor: TsColorValue);
     function ReadHeaderFooterText(ANode: TDOMNode): String;
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
@@ -125,6 +146,7 @@ type
   private
     FColumnStyleList: TFPList;
     FRowStyleList: TFPList;
+    FHeaderFooterFontList: TObjectList;
 
     // Routines to write parts of files
     procedure WriteAutomaticStyles(AStream: TStream);
@@ -144,8 +166,11 @@ type
     function WriteBorderStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteCommentXMLAsString(AComment: String): String;
     function WriteDefaultFontXMLAsString: String;
-    function WriteFontStyleXMLAsString(const AFormat: TsCellFormat): String;
+    function WriteFontStyleXMLAsString(const AFormat: TsCellFormat): String; overload;
+    function WriteFontStyleXMLAsString(AFont: TsFont): String; overload;
+    function WriteHeaderFooterFontXMLAsString(AFont: TsHeaderFooterFont): String;
     function WriteHorAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
+    function WritePageLayoutAsXMLString(AStyleName: String; const APageLayout: TsPageLayout): String;
     function WriteTextRotationStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteVertAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteWordwrapStyleXMLAsString(const AFormat: TsCellFormat): String;
@@ -313,6 +338,204 @@ type
     DefaultCellStyleIndex: Integer;  // Index of default row style in FCellStyleList of reader
   end;
   *)
+
+{******************************************************************************}
+{                          TXMLHeaderFooterFont                                }
+{******************************************************************************}
+type
+  TXMLHeaderFooterFont = class(TsHeaderFooterFont)
+    StyleName: String;
+  end;
+
+{******************************************************************************}
+{                    TsSpreadOpenDocHeaderFooterParser                         }
+{******************************************************************************}
+
+constructor TsSpreadOpenDocHeaderFooterParser.Create(ANode: TDOMNode;
+  AFontList: TList; ADefaultFont: TsHeaderFooterFont);
+begin
+  inherited Create;
+  XMLMode := true;
+  FNode := ANode; // this is a child of the "<style-header>" etc nodes.
+  FFontList := AFontList;
+  FDefaultFont := ADefaultFont;
+  FFontClass := TXMLHeaderFooterFont;
+  Parse;
+end;
+
+procedure TsSpreadOpenDocHeaderFooterParser.AddNodeElement(ANode: TDOMNode);
+var
+  nodeName: String;
+begin
+  nodeName := ANode.NodeName;
+  case nodeName of
+    'text:sheet-name':
+      AddElement(hftSheetName);
+    'text:file-name' :
+      case GetAttrValue(ANode, 'text:display') of
+        'full': begin
+                  AddElement(hftPath);
+                  AddElement(hftFileName);
+                end;
+        'path': AddElement(hftPath);
+        else    AddElement(hftFileName);
+      end;
+    'text:date':
+      AddElement(hftDate);
+    'text:time':
+      AddElement(hftTime);
+    'text:page-number':
+      AddElement(hftPage);
+    'text:page-count':
+      AddElement(hftPageCount);
+    '#text':
+      begin
+        FCurrText := ANode.NodeValue; //GetNodeValue(ANode);
+        AddCurrTextElement;
+      end;
+  end;
+end;
+
+function TsSpreadOpenDocHeaderFooterParser.BuildHeaderFooterAsXMLString: String;
+var
+  list: TStringList;
+  regionStr: array[TsHeaderFooterSectionIndex] of String;
+  sec: TsHeaderFooterSectionIndex;
+  element: TsHeaderFooterElement;
+  styleName: String;
+  s: String;
+begin
+  for sec := hfsLeft to hfsRight do
+  begin
+    if Length(FSections[sec]) = 0 then
+      Continue;
+    regionStr[sec] := '';
+    for element in FSections[sec] do
+    begin
+      stylename := TXMLHeaderFooterFont(FFontList[element.FontIndex]).StyleName;
+      case element.Token of
+        hftText:
+          s := Format('<text:span text:style-name="%s">%s</text:span>', [
+                 stylename, UTF8TextToXMLText(element.TextValue)]);
+        hftNewLine:
+          s := '</text:p><text:p>';
+        hftSheetName:
+          s := '<text:sheet-name>???</text:sheet-name>';
+        hftPath:
+          s := '<text:file-name text:display="path">???</text:file-name>';
+        hftFileName:
+          s := '<text:file-name text:display="name-and-extension">???</text:file-name>';
+        hftDate:
+          s := Format('<text:date style:data-style-name="N2" text:date-value="%s">%s</text:date>', [
+                 FormatDateTime('yyyy"-"mm"-"dd', date()), DateToStr(date())]);
+        hftTime:
+          s := Format('<text:time>%s</text:time>', [
+                 FormatDateTime('hh:nn:ss', time()) ]);
+        hftPage:
+          s := '<text:page-number>1</text:page-number>';
+        hftPageCount:
+          s := '<text:page-count>1</text:page-count>';
+      end;
+      regionStr[sec] := regionStr[sec] + s;
+    end; // for element
+    if regionStr[sec] <> '' then
+      regionStr[sec] := '<text:p>' + regionStr[sec] + '</text:p>';
+  end;  // for sec
+
+  Result := '';
+  for sec := hfsLeft to hfsRight do
+  begin
+    case sec of
+      hfsLeft   : s := 'style:region-left';
+      hfsCenter : s := 'style:region-center';
+      hfsRight  : s := 'style:region-right';
+    end;
+    if regionStr[sec] = '' then
+      Result := Result + '<' + s + ' />' else
+      Result := Result + '<' + s + '>' + regionStr[sec] + '</' + s + '>';
+  end;
+end;
+
+function TsSpreadOpenDocHeaderFooterParser.FindStyle(AStyleName: String): Integer;
+var
+  fnt: TXMLHeaderFooterFont;
+begin
+  for Result := 0 to FFontList.Count-1 do
+  begin
+    fnt := TXMLHeaderFooterFont(FFontList[Result]);
+    if SameText(fnt.StyleName, AStyleName) then
+      exit;
+  end;
+  Result := -1;
+end;
+
+function TsSpreadOpenDocHeaderFooterParser.GetCurrFontIndex: Integer;
+begin
+  if XMLMode then
+    Result := FCurrFontIndex
+  else
+    Result := inherited GetCurrFontIndex;
+end;
+
+procedure TsSpreadOpenDocHeaderFooterParser.Parse;
+var
+  node, pnode, childpnode, childspannode, textnode: TDOMNode;
+  nodeName: String;
+  s: String;
+  firstP: Boolean;
+begin
+  FFontClass := TXMLHeaderFooterFont;
+
+  if not XMLMode then
+  begin
+    inherited Parse;
+    exit;
+  end;
+
+  node := FNode;
+  while Assigned(node) do
+  begin
+    nodeName := node.NodeName;
+    case nodeName of
+      'style:region-left'   : FCurrSection := hfsLeft;
+      'style:region-center' : FCurrSection := hfsCenter;
+      'style:region-right'  : FCurrSection := hfsRight;
+    end;
+    firstP := true;
+    pnode := node.FirstChild;
+    while Assigned(pnode) do
+    begin
+      nodeName := pnode.NodeName;
+      if nodeName = 'text:p' then
+      begin
+  //      if not firstP then AddElement(hftNewLine);
+        childpnode := pnode.FirstChild;
+        while Assigned(childpnode) do
+        begin
+          nodeName := childpnode.NodeName;
+          if nodeName = 'text:span' then begin
+            s := GetAttrValue(childpnode, 'text:style-name');
+            if s <> '' then
+              FCurrFontIndex := FindStyle(s) else
+              FCurrFontIndex := -1;
+            childspannode := childpnode.FirstChild;
+            while Assigned(childspannode) do
+            begin
+              nodeName := childspannode.NodeName;
+              AddNodeElement(childspannode);
+              childspannode := childspannode.NextSibling;
+            end;
+          end else
+            AddNodeElement(childpnode);
+          childpnode := childpnode.NextSibling;
+        end;
+        firstP := false;
+      end;
+      pnode := pnode.NextSibling;
+    end;
+    node := node.NextSibling;
+  end;
+end;
 
 
 {******************************************************************************}
@@ -640,7 +863,7 @@ begin
   FRowList := TFPList.Create;
   FPageLayoutList := TFPList.Create;
   FMasterPageList := TFPList.Create;
-  FHeaderFooterFontList := TStringList.Create;
+  FHeaderFooterFontList := TObjectList.Create;  // frees objects
 
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
@@ -893,27 +1116,41 @@ var
   isHeader: Boolean;
   h: Double;
   idx: Integer;
+  fnt: TXMLHeaderFooterFont;
+  defFnt: TsFont;
+  fntName: String;
+  fntSize: Double;
+  fntStyle: TsHeaderFooterFontStyles;
+  fntColor: TsColorValue;
 begin
   if not Assigned(AStylesNode) then
     exit;
+  defFnt := Workbook.GetDefaultFont;
   layoutNode := AStylesNode.FirstChild;
   while layoutNode <> nil do
   begin
     nodeName := layoutNode.NodeName;
     if nodeName = 'style:style' then
     begin
+      // Read fonts used by page layout's header/footer
+      fntName := defFnt.FontName;
+      fntSize := defFnt.Size;
+      fntColor := defFnt.Color;
       s := GetAttrValue(layoutNode, 'style:family');
       if s = 'text' then
       begin
         s := GetAttrValue(layoutNode, 'style:name');
         fontNode := layoutNode.FirstChild;
-        idx := ReadFont(fontNode);
-        FHeaderFooterFontList.AddObject(s, TObject(PtrInt(idx)));
+        ReadHeaderFooterFont(fontNode, fntName, fntSize, fntStyle, fntColor);
+        fnt := TXMLHeaderFooterFont.Create(fntName, fntSize, fntStyle, fntColor);
+        fnt.StyleName := s;
+        FHeaderFooterFontList.Add(fnt);
       end;
     end
     else
     if nodeName = 'style:page-layout' then
     begin
+      // Read page layout parameters
       data := TPageLayoutData.Create;
       InitPageLayout(data.PageLayout);
       data.Name := GetAttrValue(layoutNode, 'style:name');
@@ -1044,122 +1281,21 @@ end;
 
 function TsSpreadOpenDocReader.ReadHeaderFooterText(ANode: TDOMNode): String;
 var
-  regionNode, textNode, spanNode: TDOMNode;
-  nodeName: String;
-  s: String;
-  currFont: TsFont;
-  fnt: TsFont;
-  idx: Integer;
+  parser: TsSpreadOpenDocHeaderFooterParser;
+  defFnt: TsHeaderFooterFont;
 begin
-  Result := '';
-  currFont := FWorkbook.GetDefaultFont;
-  regionNode := ANode.FirstChild;
-  while regionNode <> nil do
-  begin
-    nodeName := regionNode.NodeName;
-    if nodeName = 'text:p' then
-    begin
-      if Result <> '' then Result := Result + LineEnding;
-      textNode := regionNode.FirstChild;
-      while textNode <> nil do
-      begin
-        nodeName := textNode.NodeName;
-        case nodeName of
-          '#text':
-            if textNode.NodeValue = '&amp;'
-              then Result := Result + '&&'
-              else Result := Result + textNode.NodeValue;
-          'text:sheet-name':
-            Result := Result + '&A';
-          'text:page-number':
-            Result := Result + '&P';
-          'text:page-count':
-            Result := Result + '&N';
-          'text:date':
-            Result := Result + '&D';
-          'text:time':
-            Result := Result + '&T';
-          'text:file-name':
-            case GetAttrValue(textNode, 'text:display') of
-              'full': Result := Result + '&Z&F';
-              'path': Result := Result + '&Z';
-              else    Result := Result + '&F';
-            end;
-          'text:span':
-            begin
-              // Extract font parameters used
-              s := GetAttrValue(textNode, 'text:style-name');
-              if s <> '' then
-              begin
-                idx := FHeaderFooterFontList.IndexOf(s);
-                if idx > -1 then
-                begin
-                  fnt := FWorkbook.GetFont(PtrInt(FHeaderFooterFontList.Objects[idx]));
-                  if fnt <> nil then
-                  begin
-                    if (fnt.FontName <> currFont.FontName) then
-                    begin
-                      if (fnt.Size <> currFont.Size) then
-                        Result := Format('%s&"%s,%.1f"', [Result, fnt.FontName, fnt.Size])
-                      else
-                        Result := Format('%s&"%s"', [Result, fnt.FontName]);
-                    end;
-                    if ((fssBold in fnt.Style) and not (fssBold in currFont.Style)) or
-                       (not (fssBold in fnt.Style) and (fssBold in currFont.Style))
-                    then
-                      Result := Result + '&B';
-                    if ((fssItalic in fnt.Style) and not (fssItalic in currFont.Style)) or
-                       (not (fssItalic in fnt.Style) and (fssItalic in currFont.Style))
-                    then
-                      Result := Result + '&I';
-                    if ((fssUnderline in fnt.Style) and not (fssUnderline in currFont.Style)) or
-                       (not (fssUnderline in fnt.Style) and (fssUnderline in currFont.Style))
-                    then
-                      Result := Result + '&U';
-                    if ((fssStrikeout in fnt.Style) and not (fssStrikeout in currFont.Style)) or
-                       (not (fssStrikeout in fnt.Style) and (fssStrikeout in currFont.Style))
-                    then
-                      Result := Result + '&S';
-                    { Currently no support for &E double strikeout, &H shadowed text, &O outlined text, &X superscript, &Y subscript }
-                    currFont := fnt;
-                  end;
-                end;
-              end;
-
-              // Extract text
-              spanNode := textNode.FirstChild;
-              while spanNode <> nil do
-              begin
-                nodeName := spanNode.NodeName;
-                case nodeName of
-                  '#text': Result := Result + spanNode.NodeValue;
-                end;
-                spanNode := spanNode.NextSibling;
-              end;
-            end;
-        end;
-        textNode := textNode.NextSibling;
-      end;
-    end else
-    if (nodeName = 'style:region-left') then
-    begin
-      s := ReadHeaderFooterText(regionNode);
-      Result := Result + '&L' + s;
-    end else
-    if (nodeName = 'style:region-center') then
-    begin
-      s := ReadHeaderFooterText(regionNode);
-      Result := Result + '&C' + s;
-    end else
-    if (nodeName = 'style:region-right') then
-    begin
-      s := ReadHeaderFooterText(regionNode);
-      Result := Result + '&R' + s;
-    end;
-    regionNode := regionNode.NextSibling;
+  defFnt := TsHeaderFooterFont.Create(Workbook.GetDefaultFont);
+  parser := TsSpreadOpenDocHeaderFooterParser.Create(ANode.FirstChild,
+    FHeaderFooterFontList, defFnt);
+  try
+    Result := parser.BuildHeaderFooter;
+  finally
+    parser.Free;
+    defFnt.Free;
   end;
 end;
 
+{ Reads the master styles nodes which contain the header/footer texts }
 procedure TsSpreadOpenDocReader.ReadMasterStyles(AStylesNode: TDOMNode);
 var
   masternode, stylenode, regionnode: TDOMNode;
@@ -1180,6 +1316,7 @@ begin
     if nodeName = 'style:master-page' then begin
       s := GetAttrvalue(masterNode, 'style:page-layout-name');
 
+      { Find the page layout data belonging to the current node }
       pageLayout := nil;
       for j:=0 to FPageLayoutList.Count-1 do
         if TPageLayoutData(FPageLayoutList[j]).Name = s then
@@ -1475,19 +1612,19 @@ var
   NullDateSetting: string;
 begin
   // Default datemode for ODF:
-  NullDateSetting:='1899-12-30';
-  CalcSettingsNode:=SpreadsheetNode.FindNode('table:calculation-settings');
+  NullDateSetting := '1899-12-30';
+  CalcSettingsNode := SpreadsheetNode.FindNode('table:calculation-settings');
   if Assigned(CalcSettingsNode) then
   begin
-    NullDateNode:=CalcSettingsNode.FindNode('table:null-date');
+    NullDateNode := CalcSettingsNode.FindNode('table:null-date');
     if Assigned(NullDateNode) then
-      NullDateSetting:=GetAttrValue(NullDateNode,'table:date-value');
+      NullDateSetting := GetAttrValue(NullDateNode,'table:date-value');
   end;
-  if NullDateSetting='1899-12-30' then
+  if NullDateSetting = '1899-12-30' then
     FDateMode := dm1899
-  else if NullDateSetting='1900-01-01' then
+  else if NullDateSetting = '1900-01-01' then
     FDateMode := dm1900
-  else if NullDateSetting='1904-01-01' then
+  else if NullDateSetting = '1904-01-01' then
     FDateMode := dm1904
   else
     raise Exception.CreateFmt('Spreadsheet file corrupt: cannot handle null-date format %s', [NullDateSetting]);
@@ -1539,7 +1676,7 @@ begin
   if s <> '' then
     fntColor := FWorkbook.AddColorToPalette(HTMLColorStrToColor(s))
   else
-    fntColor := FWorkbook.GetFont(0).Color;
+    fntColor := FWorkbook.GetDefaultFont.Color;
 
   if APreferredIndex = 0 then
   begin
@@ -1788,6 +1925,60 @@ begin
   Unused(AStream);
   raise Exception.Create('[TsSpreadOpenDocReader.ReadFromStream] '+
                          'Method not implemented. Use "ReadFromFile" instead.');
+end;
+
+procedure TsSpreadOpenDocReader.ReadHeaderFooterFont(ANode: TDOMNode;
+  var AFontName: String; var AFontSize: Double;
+  var AFontStyle: TsHeaderFooterFontStyles; var AFontColor: TsColorValue);
+var
+  s: String;
+begin
+  if ANode = nil then
+    exit;
+
+  AFontName := GetAttrValue(ANode, 'style:font-name');
+
+  s := GetAttrValue(ANode, 'fo:font-size');
+  if s <> '' then
+    AFontSize := HTMLLengthStrToPts(s);
+
+  AFontStyle := [];
+
+  if GetAttrValue(ANode, 'fo:font-style') = 'italic' then
+    Include(AFontStyle, hfsItalic);
+
+  if GetAttrValue(ANode, 'fo:font-weight') = 'bold' then
+    Include(AFontStyle, hfsBold);
+
+  s := GetAttrValue(ANode, 'style:text-underline-style');
+  if not ((s = '') or (s = 'none')) then
+  begin
+    if GetAttrValue(ANode, 'style:text-underline-type') = 'double' then
+      Include(AFontStyle, hfsDblUnderline)
+    else
+      Include(AFontStyle, hfsUnderline);
+  end;
+
+  s := GetAttrValue(ANode, 'style:text-strike-through-style');
+  if not ((s = '') or (s = 'none')) then
+    Include(AFontStyle, hfsStrikeout);
+
+  if GetAttrValue(ANode, 'style:text-outline') = 'true' then
+    Include(AFontStyle, hfsOutline);
+
+  s := GetAttrValue(ANode, 'style:text-shadow');
+  if not ((s = '') or (s = 'none')) then
+    Include(AFontStyle, hfsShadow);
+
+  s := GetAttrValue(ANode, 'style:text-position');
+  if pos('sub', s) = 1 then
+    Include(AFontStyle, hfsSubscript)
+  else if pos('super', s) = 1 then
+    Include(AFontStyle, hfsSuperscript);
+
+  s := GetAttrValue(ANode, 'fo:color');
+  if s <> '' then
+    AFontColor := HTMLColorStrToColor(s);
 end;
 
 procedure TsSpreadOpenDocReader.ReadLabel(ARow, ACol: Cardinal;
@@ -3166,124 +3357,10 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteAutomaticStyles(AStream: TStream);
-
-  function PageLayoutAsXMLString(AStyleName: String;
-    const APageLayout: TsPageLayout): String;
-  const
-    ORIENTATIONS: Array[TsPageOrientation] of string = ('portrait', 'landscape');
-    PAGEORDERS: Array[boolean] of string = ('ttb', 'ltr');
-  var
-    pageLayoutStr: String;
-    headerStyleStr: String;
-    footerStyleStr: String;
-    options: String;
-    i: Integer;
-    hasHeader, hasFooter: Boolean;
-    topmargin, bottommargin: Double;
-    h: Double;
-  begin
-    hasHeader := false;
-    hasFooter := false;
-    for i:=0 to High(APageLayout.Headers) do
-    begin
-      if APageLayout.Headers[i] <> '' then hasHeader := true;
-      if APageLayout.Footers[i] <> '' then hasFooter := true;
-    end;
-
-    if hasHeader then
-      topMargin := APageLayout.HeaderMargin
-    else
-      topMargin := APageLayout.TopMargin;
-
-    if hasFooter then
-      bottomMargin := APageLayout.FooterMargin
-    else
-      bottomMargin := APageLayout.BottomMargin;
-
-    pageLayoutStr := Format(
-        'fo:page-width="%.2fmm" fo:page-height="%.2fmm" '+
-        'fo:margin-top="%.2fmm" fo:margin-bottom="%.2fmm" '+
-        'fo:margin-left="%.2fmm" fo:margin-right="%.2fmm" ', [
-        APageLayout.PageWidth, APageLayout.PageHeight,
-        topmargin, bottommargin,
-        APageLayout.LeftMargin, APageLayout.RightMargin
-      ], FPointSeparatorSettings);
-
-    if APageLayout.Orientation = spoLandscape then
-      pageLayoutStr := pageLayoutStr + 'style:print-orientation="landscape" ';
-
-    if poPrintPagesByRows in APageLayout.Options then
-      pageLayoutStr := pageLayoutStr + 'style:print-page-order="ltr" ';
-
-    if poUseStartPageNumber in APageLayout.Options then
-      pageLayoutStr := pageLayoutStr + 'style:first-page-number="' + IntToStr(APageLayout.StartPageNumber) +'" '
-    else
-      pageLayoutStr := pageLayoutStr + 'style:first-page-number="continue" ';
-
-    if APageLayout.Options * [poHorCentered, poVertCentered] = [poHorCentered, poVertCentered] then
-      pageLayoutStr := pageLayoutStr + 'style:table-centering="both" '
-    else if poHorCentered in APageLayout.Options then
-      pageLayoutStr := pageLayoutStr + 'style:table-centering="horizontal" '
-    else if poVertCentered in APageLayout.Options then
-      pageLayoutStr := pageLayoutStr + 'style:table-centering="vertical" ';
-
-    if poFitPages in APageLayout.Options then
-    begin
-      if APageLayout.FitWidthToPages > 0 then
-        pageLayoutStr := pageLayoutStr + 'style:scale-to-X="' + IntToStr(APageLayout.FitWidthToPages) + '" ';
-      if APageLayout.FitHeightToPages > 0 then
-        pageLayoutStr := pageLayoutStr + 'style:scale-to-Y="' + IntToStr(APageLayout.FitHeightToPages) + '" ';
-    end else
-      pageLayoutStr := pageLayoutStr + 'style:scale-to="' + IntToStr(APageLayout.ScalingFactor) + '%" ';
-
-    options := 'charts drawings objects zero-values';
-    if poPrintGridLines in APageLayout.Options then
-      options := options + ' grid';
-    if poPrintHeaders in APageLayout.Options then
-      options := options + ' headers';
-    if poPrintCellComments in APageLayout.Options then
-      options := options + ' annotations';
-
-    pageLayoutStr := pageLayoutStr + 'style:print="' + options + '" ';
-
-    h := PtsToMM(FWorkbook.GetDefaultFontSize);
-
-    if hasHeader then
-      headerStyleStr := Format(
-        '<style:header-style>'+
-          '<style:header-footer-properties ' +
-            'fo:margin-left="0mm" fo:margin-right="0mm" '+
-            'fo:min-height="%.2fmm" fo:margin-bottom="%.2fmm" '+
-          '/>'+
-        '</style:header-style>', [
-        APageLayout.TopMargin - APageLayout.HeaderMargin,
-        APageLayout.TopMargin - APageLayout.HeaderMargin - h], FPointSeparatorSettings)
-    else
-      headerStyleStr := '';
-
-    if hasFooter then
-      footerStyleStr := Format(
-        '<style:footer-style>'+
-          '<style:header-footer-properties ' +
-            'fo:margin-left="0mm" fo:margin-right="0mm" '+
-            'fo:min-height="%.2fmm" fo:margin-top="%.2fmm" '+
-          '/>'+
-        '</style:footer-style>', [
-        APageLayout.BottomMargin - APageLayout.FooterMargin,
-        APageLayout.BottomMargin - APageLayout.FooterMargin - h], FPointSeparatorSettings)
-    else
-      footerStyleStr := '';
-
-    Result := '<style:page-layout style:name="' + AStyleName + '">' +
-                '<style:page-layout-properties ' + pageLayoutStr + '/>'+
-                headerStyleStr +
-                footerStyleStr +
-              '</style:page-layout>';
-  end;
-
 var
   i: Integer;
   sheet: TsWorksheet;
+  fnt: TXMLHeaderFooterFont;
 
 begin
   AppendToStream(AStream,
@@ -3321,7 +3398,19 @@ begin
   for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
     AppendToStream(AStream,
-      PageLayoutAsXMLString('Mpm' + IntToStr(3+i), sheet.PageLayout));
+      WritePageLayoutAsXMLString('Mpm' + IntToStr(3+i), sheet.PageLayout));
+  end;
+
+  for i:=0 to FHeaderFooterFontList.Count-1 do
+  begin
+    fnt := TXMLHeaderFooterFont(FHeaderFooterFontList[i]);
+    fnt.StyleName := 'MT' + IntToStr(i+1);
+    AppendToStream(AStream, Format(
+      '<style:style style:name="%s" style:family="text">' +
+        '<style:text-properties %s />' +
+      '</style:style>', [
+      fnt.StyleName, WriteHeaderFooterFontXMLAsString(fnt)
+    ]));
   end;
 
   AppendToStream(AStream,
@@ -3734,19 +3823,59 @@ procedure TsSpreadOpenDocWriter.WriteFontNames(AStream: TStream);
 var
   L: TStringList;
   fnt: TsFont;
+  hfFnt: TXMLHeaderFooterFont;
   i: Integer;
+  defFnt: TsHeaderFooterFont;
+  sheet: TsWorksheet;
+
+  { Add the fonts used in the specified header/footer line to the
+    HeaderFooterFontList. This is done while the HeaderFooterParser is created. }
+  procedure AddFontsOfHeaderFooter(AText: String; ADefaultFont: TsHeaderFooterFont);
+  begin
+    TsSpreadOpenDocHeaderFooterParser.Create(AText, FHeaderFooterFontList, ADefaultFont).Free;
+  end;
+
 begin
+  // At first take care of the headers and footers, their fonts are not stored
+  // in the Workbook's FontList. Here were store the fonts in the
+  // FHeaderFooterFontList of the reader which is needed also when writing
+  // headers and footers.
+  defFnt := TsHeaderFooterFont.Create(Workbook.GetDefaultFont);
+  try
+    for i:=0 to Workbook.GetWorksheetCount-1 do
+    begin
+      sheet := Workbook.GetWorksheetByIndex(i);
+      AddFontsOfHeaderFooter(sheet.pageLayout.Headers[1], defFnt);
+      AddFontsOfHeaderFooter(sheet.PageLayout.Headers[2], defFnt);
+      AddFontsOfHeaderFooter(sheet.PageLayout.Footers[1], defFnt);
+      AddFontsOfHeaderFooter(sheet.PageLayout.Footers[2], defFnt);
+    end;
+  finally
+    defFnt.Free;
+  end;
+
+  // Begin writing to stream
   AppendToStream(AStream,
     '<office:font-face-decls>');
 
+  // Collect all unique font names in a string list
   L := TStringList.Create;
   try
+    // First collect the font names from the workbook's FontList
     for i:=0 to Workbook.GetFontCount-1 do
     begin
       fnt := Workbook.GetFont(i);
       if (fnt <> nil) and (L.IndexOf(fnt.FontName) = -1) then
         L.Add(fnt.FontName);
     end;
+    // Then collect the header/footer font names from the HeaderFooterFontList
+    for i:=0 to FHeaderFooterFontList.Count-1 do
+    begin
+      hfFnt := TXMLHeaderFooterFont(FHeaderFooterFontList[i]);
+      if (hfFnt <> nil) and (L.Indexof(hfFnt.FontName) = -1) then
+        L.Add(hfFnt.FontName);
+    end;
+    // Done. Now write all font names as xml nodes to the stream
     for i:=0 to L.Count-1 do
       AppendToStream(AStream, Format(
         '<style:font-face style:name="%s" svg:font-family="%s" />', [L[i], L[i]]));
@@ -3754,82 +3883,34 @@ begin
     L.Free;
   end;
 
+  // Write end node
   AppendToStream(AStream,
     '</office:font-face-decls>');
 end;
 
 procedure TsSpreadOpenDocWriter.WriteMasterStyles(AStream: TStream);
+var
+  defFnt: TsHeaderFooterFont;
+  i: Integer;
+  sheet: TsWorksheet;
 
   function HeaderFooterAsString(AIndex: Integer; AIsHeader: Boolean;
     const APageLayout: TsPageLayout): String;
   var
-    p: Integer;
+    parser: TsSpreadOpenDocHeaderFooterParser;
     str: String;
-    region: Integer;  // -1=default, 0=left, 1=center, 2=right
   begin
-    Result := '';
     if AIsHeader then
       str := APageLayout.Headers[AIndex] else
       str := APageLayout.Footers[AIndex];
     if str = '' then
       exit;
-    p := 1;
-    region := -1;
-    while p <= Length(str) do begin
-      if (str[p] = '&') and (p < Length(str)) then
-      begin
-        inc(p);
-        case str[p] of
-          'L': begin
-                 case region of
-                   0: Result := Result + '</text:p></style:region-left>';
-                   1: Result := Result + '</text:p></style:region-center>';
-                   2: Result := Result + '</text:p></style:region-right>';
-                 end;
-                 Result := Result + '<style:region-left><text:p>';
-                 region := 0;
-               end;
-          'C': begin
-                 case region of
-                   0: Result := Result + '</text:p></style:region-left>';
-                   1: Result := Result + '</text:p></style:region-center>';
-                   2: Result := Result + '</text:p></style:region-right>';
-                 end;
-                 Result := Result + '<style:region-center><text:p>';
-                 region := 1;
-               end;
-          'R': begin
-                 case region of
-                   0: Result := Result + '</text:p></style:region-left>';
-                   1: Result := Result + '</text:p></style:region-center>';
-                   2: Result := Result + '</text:p></style:region-right>';
-                 end;
-                 Result := Result + '<style:region-right><text:p>';
-                 region := 2;
-               end;
-          'A': Result := Result + '<text:sheet-name>???</text:sheet-name>';
-          'D': Result := Result + Format(
-                 '<text:date style:data-style-name="N2" text:date-value="%s">%s</text:date>',
-                 [FormatDateTime('yyyy"-"mm"-"dd', date()), DateToStr(date())]);
-          'F': Result := Result + '<text:file-name text:display="name-and-extension">???</text:file-name>';
-          'P': Result := Result + '<text:page-number>1</text:page-number>';
-          'N': Result := Result + '<text:page-count>1</text:page-count>';
-          'T': Result := Result + Format(
-                 '<text:time>%s</text:time>', [FormatDateTime('hh:nn:ss', time())]);
-          'Z': Result := Result + '<text:file-name text:display="path">???</text:file-name>';
-          '&': Result := Result + '&amp;&amp;';
-        end;
-      end
-      else
-        Result := Result + str[p];
-      inc(p);
-    end; // while
-
-    case region of
-      -1: Result := '<text:p>' + Result + '</text:p>';
-       0: Result := Result + '</text:p></style:region-left>';
-       1: Result := Result + '</text:p></style:region-center>';
-       2: Result := Result + '</text:p></style:region-right>';
+    parser := TsSpreadOpenDocHeaderFooterParser.Create(str, FHeaderFooterFontList,
+      defFnt);
+    try
+      Result := parser.BuildHeaderFooterAsXMLString;
+    finally
+      parser.Free;
     end;
   end;
 
@@ -3869,10 +3950,9 @@ procedure TsSpreadOpenDocWriter.WriteMasterStyles(AStream: TStream);
     Result := Result + '</style:master-page>';
   end;
 
-var
-  i: Integer;
-  sheet: TsWorksheet;
 begin
+  defFnt := TsHeaderFooterFont.Create(Workbook.GetDefaultFont);
+
   AppendToStream(AStream,
     '<office:master-styles>');
 
@@ -3893,6 +3973,8 @@ begin
 
   AppendToStream(AStream,
     '</office:master-styles>');
+
+  defFnt.Free;
 end;
 
 procedure TsSpreadOpenDocWriter.WriteNumFormats(AStream: TStream);
@@ -3917,18 +3999,6 @@ begin
     finally
       parser.Free;
     end;
-        {
-    fmtItem := FNumFormatList.Items[i];
-    parser := TsSpreadOpenDocNumFormatParser.Create(Workbook, fmtItem.FormatString,
-      fmtItem.NumFormat);
-    try
-      numFmtXML := parser.BuildXMLAsString(fmtItem.Name);
-      if numFmtXML <> '' then
-        AppendToStream(AStream, numFmtXML);
-    finally
-      parser.Free;
-    end;
-    }
   end;
 end;
 
@@ -4072,7 +4142,6 @@ begin
           '<table:table-cell %s/>', [colsRepeatedStr]));
       end else
         WriteCellToStream(AStream, cell);
-//        WriteCellCallback(cell, AStream);
       inc(c, colsRepeated);
     end;
 
@@ -4126,6 +4195,7 @@ begin
 
   FColumnStyleList := TFPList.Create;
   FRowStyleList := TFPList.Create;
+  FHeaderFooterFontList := TObjectList.Create;
 
   FPointSeparatorSettings := SysUtils.DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator:='.';
@@ -4145,6 +4215,8 @@ begin
 
   for j:=FRowStyleList.Count-1 downto 0 do TObject(FRowStyleList[j]).Free;
   FRowStyleList.Free;
+
+  FHeaderFooterFontList.Free;
 
   inherited Destroy;
 end;
@@ -4473,7 +4545,7 @@ function TsSpreadOpenDocWriter.WriteDefaultFontXMLAsString: String;
 var
   fnt: TsFont;
 begin
-  fnt := Workbook.GetFont(0);
+  fnt := Workbook.GetDefaultFont;
   Result := Format(
     '<style:text-properties style:font-name="%s" fo:font-size="%.1f" />',
     [fnt.FontName, fnt.Size], FPointSeparatorSettings
@@ -4489,44 +4561,90 @@ begin
   // ??
 end;
 
-function TsSpreadOpenDocWriter.WriteFontStyleXMLAsString(
-  const AFormat: TsCellFormat): String;
+function TsSpreadOpenDocWriter.WriteFontStyleXMLAsString(AFont: TsFont): String;
 var
-  fnt: TsFont;
   defFnt: TsFont;
 begin
   Result := '';
 
-  if not (uffFont in AFormat.UsedFormattingFields) then
-    exit;
+  defFnt := Workbook.GetDefaultFont;
+  if AFont = nil then AFont := defFnt;
 
-  fnt := Workbook.GetFont(AFormat.FontIndex);
-  defFnt := Workbook.GetDefaultfont;
-  if fnt = nil then
-    fnt := defFnt;
+  if AFont.FontName <> defFnt.FontName then
+    Result := Result + Format('style:font-name="%s" ', [AFont.FontName]);
 
-  if fnt.FontName <> defFnt.FontName then
-    Result := Result + Format('style:font-name="%s" ', [fnt.FontName]);
-
-  if fnt.Size <> defFnt.Size then
+  if AFont.Size <> defFnt.Size then
     Result := Result + Format('fo:font-size="%.1fpt" style:font-size-asian="%.1fpt" style:font-size-complex="%.1fpt" ',
-      [fnt.Size, fnt.Size, fnt.Size], FPointSeparatorSettings);
+      [AFont.Size, AFont.Size, AFont.Size], FPointSeparatorSettings);
 
-  if fssBold in fnt.Style then
+  if fssBold in AFont.Style then
     Result := Result + 'fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold" ';
 
-  if fssItalic in fnt.Style then
+  if fssItalic in AFont.Style then
     Result := Result + 'fo:font-style="italic" style:font-style-asian="italic" style:font-style-complex="italic" ';
 
-  if fssUnderline in fnt.Style then
+  if fssUnderline in AFont.Style then
     Result := Result + 'style:text-underline-style="solid" style:text-underline-width="auto" style:text-underline-color="font-color" ';
 
-  if fssStrikeout in fnt.Style then
+  if fssStrikeout in AFont.Style then
     Result := Result + 'style:text-line-through-style="solid" ';
 
-  if fnt.Color <> defFnt.Color then
-    Result := Result + Format('fo:color="%s" ', [Workbook.GetPaletteColorAsHTMLStr(fnt.Color)]);
+  if AFont.Color <> defFnt.Color then
+    Result := Result + Format('fo:color="%s" ', [Workbook.GetPaletteColorAsHTMLStr(AFont.Color)]);
 end;
+
+function TsSpreadOpenDocWriter.WriteFontStyleXMLAsString(
+  const AFormat: TsCellFormat): String;
+begin
+  Result := '';
+  if (uffFont in AFormat.UsedFormattingFields) then
+    Result := WriteFontStyleXMLAsString(Workbook.GetFont(AFormat.FontIndex));
+end;
+
+function TsSpreadOpenDocWriter.WriteHeaderFooterFontXMLAsString(
+  AFont: TsHeaderFooterFont): String;
+begin
+  Result := Format('style:font-name="%s" fo:font-size="%dpt" ', [
+    AFont.FontName, round(AFont.Size)
+  ]);
+
+  if hfsBold in AFont.Style then
+    Result := Result + 'fo:font-weight="bold" ';
+
+  if hfsItalic in AFont.Style then
+    Result := Result + 'fo:font-style="italic" ';
+
+  if hfsUnderline in AFont.Style then
+    Result := Result + 'style:text-underline-style="solid" '+
+                       'style:text-underline-width="auto" '+
+                       'style:text-underline-color="font-color" ';
+
+  if hfsDblUnderline in AFont.Style then
+    Result := Result + 'style:text-underline-style="solid" '+
+                       'style:text-underline-type="double" ' +
+                       'style:text-underline-width="auto" '+
+                       'style:text-underline-color="font-color" ';
+
+  if hfsStrikeout in AFont.Style then
+    Result := Result + 'style:text-line-through-style="solid" ';
+
+  if hfsOutline in AFont.Style then
+    Result := Result + 'style:text-outline="true" ';
+
+  if hfsShadow in AFont.Style then
+    Result := Result + 'style:text-shadow="1pt 1pt" ' +
+                       'style:text-outline="none" ';
+
+  if hfsSubscript in AFont.Style then
+    Result := Result + 'style:text-position="sub 58%" ';
+
+  if hfsSuperscript in AFont.Style then
+    Result := Result + 'style:text-position="super 58%" ';
+
+  if AFont.Color <> 0 then
+    Result := Result + Format('fo:color="%s" ', [ColorToHTMLColorStr(AFont.Color)]);
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Creates an XML string for inclusion of the horizontal alignment into the
@@ -4544,6 +4662,120 @@ begin
     haCenter : Result := 'fo:text-align="center" ';
     haRight  : Result := 'fo:text-align="end" ';
   end;
+end;
+
+function TsSpreadOpenDocWriter.WritePageLayoutAsXMLString(AStyleName: String;
+  const APageLayout: TsPageLayout): String;
+const
+  ORIENTATIONS: Array[TsPageOrientation] of string = ('portrait', 'landscape');
+  PAGEORDERS: Array[boolean] of string = ('ttb', 'ltr');
+var
+  pageLayoutStr: String;
+  headerStyleStr: String;
+  footerStyleStr: String;
+  options: String;
+  i: Integer;
+  hasHeader, hasFooter: Boolean;
+  topmargin, bottommargin: Double;
+  h: Double;
+begin
+  hasHeader := false;
+  hasFooter := false;
+  for i:=0 to High(APageLayout.Headers) do
+  begin
+    if APageLayout.Headers[i] <> '' then hasHeader := true;
+    if APageLayout.Footers[i] <> '' then hasFooter := true;
+  end;
+
+  if hasHeader then
+    topMargin := APageLayout.HeaderMargin
+  else
+    topMargin := APageLayout.TopMargin;
+
+  if hasFooter then
+    bottomMargin := APageLayout.FooterMargin
+  else
+    bottomMargin := APageLayout.BottomMargin;
+
+  pageLayoutStr := Format(
+      'fo:page-width="%.2fmm" fo:page-height="%.2fmm" '+
+      'fo:margin-top="%.2fmm" fo:margin-bottom="%.2fmm" '+
+      'fo:margin-left="%.2fmm" fo:margin-right="%.2fmm" ', [
+      APageLayout.PageWidth, APageLayout.PageHeight,
+      topmargin, bottommargin,
+      APageLayout.LeftMargin, APageLayout.RightMargin
+    ], FPointSeparatorSettings);
+
+  if APageLayout.Orientation = spoLandscape then
+    pageLayoutStr := pageLayoutStr + 'style:print-orientation="landscape" ';
+
+  if poPrintPagesByRows in APageLayout.Options then
+    pageLayoutStr := pageLayoutStr + 'style:print-page-order="ltr" ';
+
+  if poUseStartPageNumber in APageLayout.Options then
+    pageLayoutStr := pageLayoutStr + 'style:first-page-number="' + IntToStr(APageLayout.StartPageNumber) +'" '
+  else
+    pageLayoutStr := pageLayoutStr + 'style:first-page-number="continue" ';
+
+  if APageLayout.Options * [poHorCentered, poVertCentered] = [poHorCentered, poVertCentered] then
+    pageLayoutStr := pageLayoutStr + 'style:table-centering="both" '
+  else if poHorCentered in APageLayout.Options then
+    pageLayoutStr := pageLayoutStr + 'style:table-centering="horizontal" '
+  else if poVertCentered in APageLayout.Options then
+    pageLayoutStr := pageLayoutStr + 'style:table-centering="vertical" ';
+
+  if poFitPages in APageLayout.Options then
+  begin
+    if APageLayout.FitWidthToPages > 0 then
+      pageLayoutStr := pageLayoutStr + 'style:scale-to-X="' + IntToStr(APageLayout.FitWidthToPages) + '" ';
+    if APageLayout.FitHeightToPages > 0 then
+      pageLayoutStr := pageLayoutStr + 'style:scale-to-Y="' + IntToStr(APageLayout.FitHeightToPages) + '" ';
+  end else
+    pageLayoutStr := pageLayoutStr + 'style:scale-to="' + IntToStr(APageLayout.ScalingFactor) + '%" ';
+
+  options := 'charts drawings objects zero-values';
+  if poPrintGridLines in APageLayout.Options then
+    options := options + ' grid';
+  if poPrintHeaders in APageLayout.Options then
+    options := options + ' headers';
+  if poPrintCellComments in APageLayout.Options then
+    options := options + ' annotations';
+
+  pageLayoutStr := pageLayoutStr + 'style:print="' + options + '" ';
+
+  h := PtsToMM(FWorkbook.GetDefaultFontSize);
+
+  if hasHeader then
+    headerStyleStr := Format(
+      '<style:header-style>'+
+        '<style:header-footer-properties ' +
+          'fo:margin-left="0mm" fo:margin-right="0mm" '+
+          'fo:min-height="%.2fmm" fo:margin-bottom="%.2fmm" '+
+        '/>'+
+      '</style:header-style>', [
+      APageLayout.TopMargin - APageLayout.HeaderMargin,
+      APageLayout.TopMargin - APageLayout.HeaderMargin - h], FPointSeparatorSettings)
+  else
+    headerStyleStr := '';
+
+  if hasFooter then
+    footerStyleStr := Format(
+      '<style:footer-style>'+
+        '<style:header-footer-properties ' +
+          'fo:margin-left="0mm" fo:margin-right="0mm" '+
+          'fo:min-height="%.2fmm" fo:margin-top="%.2fmm" '+
+        '/>'+
+      '</style:footer-style>', [
+      APageLayout.BottomMargin - APageLayout.FooterMargin,
+      APageLayout.BottomMargin - APageLayout.FooterMargin - h], FPointSeparatorSettings)
+  else
+    footerStyleStr := '';
+
+  Result := '<style:page-layout style:name="' + AStyleName + '">' +
+              '<style:page-layout-properties ' + pageLayoutStr + '/>'+
+              headerStyleStr +
+              footerStyleStr +
+            '</style:page-layout>';
 end;
 
 procedure TsSpreadOpenDocWriter.WriteTableSettings(AStream: TStream);
@@ -4624,6 +4856,7 @@ begin
     ]));
   end;
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Creates an XML string for inclusion of the textrotation style option into the
@@ -4776,7 +5009,6 @@ begin
         end else
           lCell.ContentType := cctEmpty;
         WriteCellToStream(AStream, @lCell);
-//        WriteCellCallback(@lCell, AStream);
       end;
       inc(c, colsRepeated);
     end;
@@ -4852,14 +5084,7 @@ begin
   parser := TsSpreadsheetParser.Create(FWorksheet);
   try
     parser.Dialect := fdOpenDocument;
-    {
-    if ACell^.SharedFormulaBase <> nil then
-    begin
-      parser.ActiveCell := ACell;
-      parser.Expression := ACell^.SharedFormulaBase^.FormulaValue;
-    end else
-    }
-      parser.Expression := ACell^.FormulaValue;
+    parser.Expression := ACell^.FormulaValue;
     formula := Parser.LocalizedExpression[FPointSeparatorSettings];
   finally
     parser.Free;
