@@ -15,11 +15,11 @@ uses
 type
   TsSpreadXMLReader = class(TsCustomSpreadReader)
   protected
-    function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
-    function GetNodeValue(ANode: TDOMNode): String;
     procedure ReadXMLFile(out ADoc: TXMLDocument; AFileName: String);
   end;
 
+function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
+function GetNodeValue(ANode: TDOMNode): String;
 procedure UnzipFile(AZipFileName, AZippedFile, ADestFolder: String);
 
 
@@ -35,7 +35,7 @@ uses
 
 { Gets value for the specified attribute. Returns empty string if attribute
   not found. }
-function TsSpreadXMLReader.GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
+function {TsSpreadXMLReader.}GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
 var
   i: LongWord;
   Found: Boolean;
@@ -58,7 +58,7 @@ end;
 { Returns the text value of a node. Normally it would be sufficient to call
   "ANode.NodeValue", but since the DOMParser needs to preserve white space
   (for the spaces in date/time formats), we have to go more into detail. }
-function TsSpreadXMLReader.GetNodeValue(ANode: TDOMNode): String;
+function {TsSpreadXMLReader.}GetNodeValue(ANode: TDOMNode): String;
 var
   child: TDOMNode;
 begin
