@@ -1192,6 +1192,12 @@ var
   node: TDOMNode;
   nodeName: String;
   s: String;
+
+  function FixLineEnding(AString: String): String;
+  begin
+    Result := StringReplace(AString, #10, LineEnding, [rfReplaceAll]);
+  end;
+
 begin
   if ANode = nil then
     exit;
@@ -1209,12 +1215,12 @@ begin
   begin
     nodeName := node.NodeName;
     case nodeName of
-      'firstHeader': AWorksheet.PageLayout.Headers[0] := GetNodeValue(node);
-      'oddHeader'  : AWorksheet.PageLayout.Headers[1] := GetNodeValue(node);
-      'evenHeader' : AWorksheet.PageLayout.Headers[2] := GetNodeValue(node);
-      'firstFooter': AWorksheet.PageLayout.Footers[0] := GetNodeValue(node);
-      'oddFooter'  : AWorksheet.PageLayout.Footers[1] := GetNodeValue(node);
-      'evenFooter' : AWorksheet.PageLayout.Footers[2] := GetNodeValue(node);
+      'firstHeader': AWorksheet.PageLayout.Headers[0] := FixLineEnding(GetNodeValue(node));
+      'oddHeader'  : AWorksheet.PageLayout.Headers[1] := FixLineEnding(GetNodeValue(node));
+      'evenHeader' : AWorksheet.PageLayout.Headers[2] := FixLineEnding(GetNodeValue(node));
+      'firstFooter': AWorksheet.PageLayout.Footers[0] := FixLineEnding(GetNodeValue(node));
+      'oddFooter'  : AWorksheet.PageLayout.Footers[1] := FixLineEnding(GetNodeValue(node));
+      'evenFooter' : AWorksheet.PageLayout.Footers[2] := FixLineEnding(GetNodeValue(node));
     end;
     node := node.NextSibling;
   end;
