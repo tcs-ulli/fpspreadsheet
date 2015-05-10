@@ -394,6 +394,9 @@ end;
 
 procedure TsHeaderFooterParser.ScanNewLine;
 begin
+  if FCurrText <> '' then
+    AddCurrTextElement;
+
   case FToken of
     #13: begin
            AddElement(hftNewLine);

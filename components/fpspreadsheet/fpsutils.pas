@@ -2217,6 +2217,10 @@ begin
       '>': WrkStr:=WrkStr + '&gt;';
       '"': WrkStr:=WrkStr + '&quot;';
       '''':WrkStr:=WrkStr + '&apos;';
+      {
+      #10: WrkStr := WrkStr + '&#10;';
+      #13: WrkStr := WrkStr + '&#13;';
+      }
     else
       WrkStr:=WrkStr + AText[Idx];
     end;
