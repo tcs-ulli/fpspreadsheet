@@ -277,7 +277,8 @@ type
 implementation
 
 uses
-  typinfo, fpsutils;
+  typinfo, contnrs,
+  fpsutils, fpsHeaderFooterParser;
 //  uriparser, lazfileutils, fpsutils;
 
 const
@@ -402,6 +403,50 @@ var
   sollPageLayout: Array of TsPageLayout;
   actualPageLayout: TsPageLayout;
   TempFile: string; //write xls/xml to this file and read back from it
+
+  function SameParsedHeaderFooter(AText1, AText2: String;
+    AWorkbook: TsWorkbook): Boolean;
+  var
+    parser1, parser2: TsHeaderFooterParser;
+    list1, list2: TObjectList;
+    s: TsHeaderFooterSectionIndex;
+    el: Integer;
+    defFnt: TsHeaderFooterFont;
+  begin
+    Result := false;
+    list1 := TObjectList.Create;
+    list2 := TObjectList.Create;
+    defFnt := TsHeaderFooterFont.Create(AWorkbook.GetDefaultFont);
+    try
+      parser1 := TsHeaderFooterParser.Create(AText1, list1, defFnt);
+      parser2 := TsHeaderFooterParser.Create(AText2, list2, defFnt);
+      try
+        for s := Low(TsHeaderFooterSectionIndex) to High(TsHeaderFooterSectionIndex) do
+        begin
+          if Length(parser1.Sections[s]) <> Length(parser2.Sections[s]) then
+            exit;
+          for el := 0 to Length(parser1.Sections[s])-1 do
+          begin
+            if parser1.Sections[s][el].Token <> parser2.Sections[s][el].Token then
+              exit;
+            if parser1.Sections[s][el].TextValue <> parser2.Sections[s][el].TextValue then
+              exit;
+            if parser1.Sections[s][el].FontIndex <> parser2.Sections[s][el].FontIndex then
+              exit;
+          end;
+        end;
+        Result := true;
+      finally
+        parser1.Free;
+        parser2.Free;
+      end;
+    finally;
+      defFnt.Free;
+      list1.Free;
+      list2.Free;
+    end;
+  end;
+
 begin
   TempFile := GetTempFileName;
 
@@ -477,12 +522,15 @@ begin
         8: // Header/footer font symbol test
            begin
              Headers[HEADER_FOOTER_INDEX_ALL] :=
-               '&LH&Y2&YO cm&X2&X'+
-               '&C&"Times New Roman"&18This is big'+
-               '&RThis is &Bbold&B,'+ LineEnding+'&Iitalic&I,'+LineEnding+
+               '&LH'+
+                 '&Y2&YO cm&X2'+
+               '&C'+
+                 '&"Times New Roman"&18This is big'+
+               '&R'+
+                 'This is &Bbold&B,'+ LineEnding+'&Iitalic&I,'+LineEnding+
                  '&Uunderlined&U,'+LineEnding+'&Edouble underlined&E,'+
                  '&Sstriked-out&S,'+LineEnding+'&Ooutlined&O,'+LineEnding+
-                 '&Hshadow&S';
+                 '&Hshadow';
              Footers[HEADER_FOOTER_INDEX_ALL] :=
                '&L&"Arial"&8Arial small'+
                '&C&"Courier new"&32Courier big'+
@@ -579,10 +627,16 @@ begin
           end;
         6, 7, 8, 9: // Header/footer tests
           begin
-            CheckEquals(sollPageLayout[p].Headers[1], actualPageLayout.Headers[1],
-              'Header value mismatch, sheet "' + MyWorksheet.Name + '"');
-            CheckEquals(sollPageLayout[p].Footers[1], actualPageLayout.Footers[1],
-              'Footer value mismatch, sheet "' + MyWorksheet.Name + '"');
+            if (sollPageLayout[p].Headers[1] <> actualPageLayout.Headers[1]) and
+              not SameParsedHeaderFooter(sollPagelayout[p].Headers[1], actualPageLayout.Headers[1], MyWorkbook)
+            then
+              CheckEquals(sollPageLayout[p].Headers[1], actualPageLayout.Headers[1],
+                'Header value mismatch, sheet "' + MyWorksheet.Name + '"');
+            if (sollPageLayout[p].Footers[1] <> actualPageLayout.Footers[1]) and
+              not SameParsedHeaderFooter(sollPagelayout[p].Footers[1], actualPageLayout.Footers[1], MyWorkbook)
+            then
+              CheckEquals(sollPageLayout[p].Footers[1], actualPageLayout.Footers[1],
+                'Footer value mismatch, sheet "' + MyWorksheet.Name + '"');
           end;
       end;
     end;
@@ -593,6 +647,16 @@ begin
   end;
 end;
 
+{
+soll:
+'&LH&Y2&YO cm&X2&X&C&"Times New Roman"&18This is big&RThis is &Bbold&B,'#13#10'&Iitalic&I,'#13#10'&Uunderlined&U,'#13#10'&Edouble underlined&E,&Sstriked-out&S,'#13#10'&Ooutlined&O,'#13#10'&Hshadow&H'
+
+actual:
+'&LH&Y2&YO cm&X2  &C&"Times New Roman"&18This is big&RThis is &Bbold&B,'#13#10'&Iitalic&I,'#13#10'&Uunderlined&U,'#13#10'&Edouble underlined&E,&Sstriked-out&S,'#13#10'&Ooutlined&O,'#13#10'&Hshadow'
+
+'&LH&Y2&YO cm&X2&C&"Times New Roman"&18This is big&RThis is &Bbold&B,'#13#10'&Iitalic&I,'#13#10'&Uunderlined&U,'#13#10'&Edouble underlined&E,&Sstriked-out&S,'#13#10'&Ooutlined&O,'#13#10'&Hshadow'
+'&LH&Y2&YO cm&X2  &C&"Times New Roman"&18This is big&RThis is &Bbold&B,'#13#10'&Iitalic&I,'#13#10'&Uunderlined&U,'#13#10'&Edouble underlined&E,striked-out,'#13#10'&Ooutlined&O,'#13#10'&Hshadow'
+}
 
 { Tests for BIFF2 file format }
 

@@ -70,6 +70,7 @@ type
     procedure AddCurrTextElement;
     procedure AddElement(AToken: TsHeaderFooterToken);
     procedure AddFontStyle(AStyle: TsHeaderFooterFontStyle);
+    procedure AddNewLine;
     function FindCurrFont: Integer;
     function GetCurrFontIndex: Integer; virtual;
     procedure Parse; virtual;
@@ -80,6 +81,7 @@ type
       ADefaultFont: TsHeaderFooterFont); overload;
     destructor Destroy; override;
     function BuildHeaderFooter: String;
+    property Sections:TsHeaderFooterSections read FSections;
   end;
 
 const
@@ -90,10 +92,6 @@ implementation
 uses
   Math,
   fpsUtils;
-
-const
-  FONTSTYLE_SYMBOLS: array[TsHeaderFooterFontStyle] of char =
-    ('B', 'I', 'U', 'E', 'S', 'H', 'O', 'X', 'Y');
 
 constructor TsHeaderFooterFont.Create;
 begin
@@ -212,13 +210,24 @@ begin
     Include(FCurrFont.Style, AStyle);
 end;
 
+procedure TsHeaderFooterParser.AddNewLine;
+begin
+  if FCurrText <> '' then
+    AddCurrTextElement;
+  ScanNewLine;
+end;
+
 function TsHeaderFooterParser.BuildHeaderFooter: String;
+const
+  FONTSTYLE_SYMBOLS: array[TsHeaderFooterFontStyle] of char =
+    ('B', 'I', 'U', 'E', 'S', 'H', 'O', 'Y', 'X');
 var
   sec: TsHeaderFooterSectionIndex;
   element: TsHeaderFooterElement;
   fnt, prevfnt: TsHeaderFooterFont;
   fs: TsHeaderFooterFontStyle;
   i: Integer;
+  s: String;
 begin
   Result := '';
   for sec := hfsLeft to hfsRight do
@@ -246,7 +255,11 @@ begin
           then
             Result := Result + '&' + FONTSTYLE_SYMBOLS[fs];
         if fnt.Color <> prevfnt.Color then
-          Result := Result + '&K' + ColorToHTMLColorStr(fnt.Color, true);
+        begin
+          s := ColorToHTMLColorStr(fnt.Color, true);  // --> 00RRGGBB
+          Delete(s, 1, 2);  // Excel wants only the RRGGBB
+          Result := Result + '&K' + s;
+        end;
         prevfnt := fnt;
       end;
       case element.Token of
@@ -329,7 +342,7 @@ begin
   while (FCurrent < FEnd) and (FStatus = hfpsOK) do begin
     case FToken of
       '&': ScanSymbol;
-      #13, #10: ScanNewLine;
+      #13, #10: AddNewLine;
       else FCurrText := FCurrText + FToken;
     end;
     FToken := NextToken;
@@ -394,9 +407,6 @@ end;
 
 procedure TsHeaderFooterParser.ScanNewLine;
 begin
-  if FCurrText <> '' then
-    AddCurrTextElement;
-
   case FToken of
     #13: begin
            AddElement(hftNewLine);
