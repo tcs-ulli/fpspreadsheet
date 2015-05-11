@@ -508,7 +508,7 @@ begin
       nodeName := pnode.NodeName;
       if nodeName = 'text:p' then
       begin
-  //      if not firstP then AddElement(hftNewLine);
+        if not firstP then AddElement(hftNewLine);
         childpnode := pnode.FirstChild;
         while Assigned(childpnode) do
         begin
@@ -1668,7 +1668,7 @@ begin
   s := GetAttrValue(ANode, 'style:text-underline-style');
   if not ((s = '') or (s = 'none')) then
     Include(fntStyles, fssUnderline);
-  s := GetAttrValue(ANode, 'style:text-strike-through-style');
+  s := GetAttrValue(ANode, 'style:text-line-through-style');
   if not ((s = '') or (s = 'none')) then
     Include(fntStyles, fssStrikeout);
 
@@ -1959,7 +1959,7 @@ begin
       Include(AFontStyle, hfsUnderline);
   end;
 
-  s := GetAttrValue(ANode, 'style:text-strike-through-style');
+  s := GetAttrValue(ANode, 'style:text-line-through-style');
   if not ((s = '') or (s = 'none')) then
     Include(AFontStyle, hfsStrikeout);
 
