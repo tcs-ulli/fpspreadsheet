@@ -1966,7 +1966,7 @@ begin
   if GetAttrValue(ANode, 'style:text-outline') = 'true' then
     Include(AFontStyle, hfsOutline);
 
-  s := GetAttrValue(ANode, 'style:text-shadow');
+  s := GetAttrValue(ANode, 'fo:text-shadow');
   if not ((s = '') or (s = 'none')) then
     Include(AFontStyle, hfsShadow);
 
@@ -4632,7 +4632,7 @@ begin
     Result := Result + 'style:text-outline="true" ';
 
   if hfsShadow in AFont.Style then
-    Result := Result + 'style:text-shadow="1pt 1pt" ' +
+    Result := Result + 'fo:text-shadow="1pt 1pt" ' +
                        'style:text-outline="none" ';
 
   if hfsSubscript in AFont.Style then
