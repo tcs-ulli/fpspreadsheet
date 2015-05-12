@@ -3974,7 +3974,6 @@ var
   number: Double;
   currSym: String;
   fmt: TsCellFormat;
-  nf: TsNumberFormat;
   numFmtParams: TsNumFormatParams;
   maxDig: Integer;
 begin

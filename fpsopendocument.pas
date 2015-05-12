@@ -185,6 +185,7 @@ type
     procedure CreateStreams;
     procedure DestroyStreams;
     procedure ListAllColumnStyles;
+    procedure ListAllHeaderFooterFonts;
     procedure ListAllNumFormats; override;
     procedure ListAllRowStyles;
     procedure ResetStreams;
@@ -398,7 +399,6 @@ end;
 
 function TsSpreadOpenDocHeaderFooterParser.BuildHeaderFooterAsXMLString: String;
 var
-  list: TStringList;
   regionStr: array[TsHeaderFooterSectionIndex] of String;
   sec: TsHeaderFooterSectionIndex;
   element: TsHeaderFooterElement;
@@ -479,7 +479,7 @@ end;
 
 procedure TsSpreadOpenDocHeaderFooterParser.Parse;
 var
-  node, pnode, childpnode, childspannode, textnode: TDOMNode;
+  node, pnode, childpnode, childspannode: TDOMNode;
   nodeName: String;
   s: String;
   firstP: Boolean;
@@ -1115,7 +1115,6 @@ var
   data: TPageLayoutData;
   isHeader: Boolean;
   h: Double;
-  idx: Integer;
   fnt: TXMLHeaderFooterFont;
   defFnt: TsFont;
   fntName: String;
@@ -1136,6 +1135,7 @@ begin
       fntName := defFnt.FontName;
       fntSize := defFnt.Size;
       fntColor := defFnt.Color;
+      fntStyle := [];
       s := GetAttrValue(layoutNode, 'style:family');
       if s = 'text' then
       begin
@@ -1298,7 +1298,7 @@ end;
 { Reads the master styles nodes which contain the header/footer texts }
 procedure TsSpreadOpenDocReader.ReadMasterStyles(AStylesNode: TDOMNode);
 var
-  masternode, stylenode, regionnode: TDOMNode;
+  masternode, stylenode: TDOMNode;
   nodeName: String;
   s: String;
   data: TMasterPageData;
@@ -3267,6 +3267,36 @@ begin
   end;
 end;
 
+{ Collects the fonts used by headers and footers in the FHeaderFooterFontList }
+procedure TsSpreadOpenDocWriter.ListAllHeaderFooterFonts;
+
+  { Add the fonts used in the specified header/footer line to the
+    HeaderFooterFontList. This is done while the HeaderFooterParser is created. }
+  procedure AddFontsOfHeaderFooter(AText: String; ADefaultFont: TsHeaderFooterFont);
+  begin
+    TsSpreadOpenDocHeaderFooterParser.Create(AText, FHeaderFooterFontList, ADefaultFont).Free;
+  end;
+
+var
+  defFnt: TsHeaderFooterFont;
+  i: Integer;
+  sheet: TsWorksheet;
+begin
+  defFnt := TsHeaderFooterFont.Create(Workbook.GetDefaultFont);
+  try
+    for i:=0 to Workbook.GetWorksheetCount-1 do
+    begin
+      sheet := Workbook.GetWorksheetByIndex(i);
+      AddFontsOfHeaderFooter(sheet.pageLayout.Headers[1], defFnt);
+      AddFontsOfHeaderFooter(sheet.PageLayout.Headers[2], defFnt);
+      AddFontsOfHeaderFooter(sheet.PageLayout.Footers[1], defFnt);
+      AddFontsOfHeaderFooter(sheet.PageLayout.Footers[2], defFnt);
+    end;
+  finally
+    defFnt.Free;
+  end;
+end;
+
 { Contains all number formats used in the workbook. Overrides the inherited
   method to assign a unique name according to the OpenDocument syntax ("N<number>"
   to the format items. }
@@ -3576,7 +3606,11 @@ begin
       '<office:scripts />');
 
   // Fonts
-  WriteFontNames(FSContent);
+  AppendToStream(FSContent,
+      '<office:font-face-decls>');
+         WriteFontNames(FSContent);
+  AppendToStream(FSContent,
+      '</office:font-face-decls>');
 
   // Automatic styles
   AppendToStream(FSContent,
@@ -3819,45 +3853,20 @@ begin
   Result := Result + '</office:annotation>';
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Writes the declaration of the font faces used in the workbook.
+  Is used in styles.xml and content.xml.
+
+  Procedure must be enclosed by
+    <office:font-face-decls> ... </office:font-face-decls>
+-------------------------------------------------------------------------------}
 procedure TsSpreadOpenDocWriter.WriteFontNames(AStream: TStream);
 var
   L: TStringList;
   fnt: TsFont;
   hfFnt: TXMLHeaderFooterFont;
   i: Integer;
-  defFnt: TsHeaderFooterFont;
-  sheet: TsWorksheet;
-
-  { Add the fonts used in the specified header/footer line to the
-    HeaderFooterFontList. This is done while the HeaderFooterParser is created. }
-  procedure AddFontsOfHeaderFooter(AText: String; ADefaultFont: TsHeaderFooterFont);
-  begin
-    TsSpreadOpenDocHeaderFooterParser.Create(AText, FHeaderFooterFontList, ADefaultFont).Free;
-  end;
-
 begin
-  // At first take care of the headers and footers, their fonts are not stored
-  // in the Workbook's FontList. Here were store the fonts in the
-  // FHeaderFooterFontList of the reader which is needed also when writing
-  // headers and footers.
-  defFnt := TsHeaderFooterFont.Create(Workbook.GetDefaultFont);
-  try
-    for i:=0 to Workbook.GetWorksheetCount-1 do
-    begin
-      sheet := Workbook.GetWorksheetByIndex(i);
-      AddFontsOfHeaderFooter(sheet.pageLayout.Headers[1], defFnt);
-      AddFontsOfHeaderFooter(sheet.PageLayout.Headers[2], defFnt);
-      AddFontsOfHeaderFooter(sheet.PageLayout.Footers[1], defFnt);
-      AddFontsOfHeaderFooter(sheet.PageLayout.Footers[2], defFnt);
-    end;
-  finally
-    defFnt.Free;
-  end;
-
-  // Begin writing to stream
-  AppendToStream(AStream,
-    '<office:font-face-decls>');
-
   // Collect all unique font names in a string list
   L := TStringList.Create;
   try
@@ -3882,10 +3891,6 @@ begin
   finally
     L.Free;
   end;
-
-  // Write end node
-  AppendToStream(AStream,
-    '</office:font-face-decls>');
 end;
 
 procedure TsSpreadOpenDocWriter.WriteMasterStyles(AStream: TStream);
@@ -3919,9 +3924,6 @@ var
   const
     IS_HEADER = true;
     IS_FOOTER = false;
-  var
-    headerstyleStr: array[1..2] of String;  // 1=odd=right, 2=even=left
-    footerStyleStr: array[1..2] of String;
   begin
     Result := Format(
       '<style:master-page style:name="%s" ' +
@@ -4268,6 +4270,7 @@ begin
   ListAllNumFormats;
   ListAllColumnStyles;
   ListAllRowStyles;
+  ListAllHeaderFooterFonts;
 
   { Create the streams that will hold the file contents }
   CreateStreams;
@@ -4547,7 +4550,7 @@ var
 begin
   fnt := Workbook.GetDefaultFont;
   Result := Format(
-    '<style:text-properties style:font-name="%s" fo:font-size="%.1f" />',
+    '<style:text-properties style:font-name="%s" fo:font-size="%.1fpt" />',
     [fnt.FontName, fnt.Size], FPointSeparatorSettings
   );
 end;
@@ -4666,9 +4669,6 @@ end;
 
 function TsSpreadOpenDocWriter.WritePageLayoutAsXMLString(AStyleName: String;
   const APageLayout: TsPageLayout): String;
-const
-  ORIENTATIONS: Array[TsPageOrientation] of string = ('portrait', 'landscape');
-  PAGEORDERS: Array[boolean] of string = ('ttb', 'ltr');
 var
   pageLayoutStr: String;
   headerStyleStr: String;

@@ -141,7 +141,6 @@ function ParamsOfNumFormatStr(AWorkbook: TsWorkbook;
   ANumFormatStr: String; var AResult: TsNumFormatParams): Integer;
 var
   parser: TsNumFormatParser;
-  i: Integer;
 begin
   Assert(AResult <> nil);
   if ANumFormatstr = 'General' then ANumFormatStr := '';

@@ -1198,12 +1198,6 @@ var
   err: TsErrorValue;
   ok: Boolean;
   cell: PCell;
-
-
-
-
-
-  fmt: TsCellFormat;
 begin
   { Index to XF Record }
   ReadRowColXF(AStream, ARow, ACol, XF);
@@ -1318,7 +1312,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadMargin(AStream: TStream; AMargin: Integer);
 var
-  dbl: Double;
+  dbl: Double = 0.0;
 begin
   AStream.ReadBuffer(dbl, SizeOf(dbl));
   case AMargin of
@@ -1488,7 +1482,7 @@ end;
 procedure TsSpreadBIFFReader.ReadPageSetup(AStream: TStream);
 var
   w: Word;
-  dbl: Double;
+  dbl: Double = 0.0;
 begin
   // Paper size
   w := WordLEToN(AStream.ReadWord);
@@ -3669,7 +3663,6 @@ begin
       end else
         lCell.ContentType := cctEmpty;
       WriteCellToStream(AStream, @lCell);
-//      WriteCellCallback(@lCell, AStream);
       value := varNULL;
     end;
 end;
