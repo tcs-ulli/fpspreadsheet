@@ -2794,7 +2794,6 @@ var
   sfrint, sfrnum, sfrdenom: String;
   sfrsym, sintnumspace, snumsymspace, ssymdenomspace: String;
   i, numEl: Integer;
-  mixed: Boolean;
   prec: Double;
 begin
   sintnumspace := '';
@@ -2810,7 +2809,6 @@ begin
   i := AIndex;
   if AElements[i].Token in (INT_TOKENS + [nftIntTh]) then begin
     // Split-off integer
-    mixed := true;
     if (AValue >= 1) then
     begin
       frint := trunc(AValue);
@@ -2835,7 +2833,6 @@ begin
   end else
   begin
     // "normal" fraction
-    mixed := false;
     sfrint := '';
     if ADigits > 0 then
       FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom)
@@ -2867,7 +2864,7 @@ begin
   AIndex := i+1;
 
   // Special cases
-  if {mixed and }(frnum = 0) then
+  if (frnum = 0) then
   begin
     if sfrnum = '' then begin
       sintnumspace := '';

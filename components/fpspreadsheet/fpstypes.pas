@@ -1156,7 +1156,6 @@ end;
 
 procedure TsNumFormatParams.SetNegativeRed(AEnable: Boolean);
 var
-  section: TsNumFormatSection;
   el: Integer;
 begin
   // Enable negative-value color
