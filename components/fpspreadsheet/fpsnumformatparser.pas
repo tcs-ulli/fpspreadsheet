@@ -89,13 +89,14 @@ type
     // Format string
     function BuildFormatString: String; virtual;
     // Token analysis
+    {
     function GetTokenIntValueAt(AToken: TsNumFormatToken;
       ASection,AIndex: Integer): Integer;
     function IsNumberAt(ASection,AIndex: Integer; out ANumFormat: TsNumberFormat;
       out ADecimals: Byte; out ANextIndex: Integer): Boolean;
     function IsTextAt(AText: string; ASection, AIndex: Integer): Boolean;
     function IsTokenAt(AToken: TsNumFormatToken; ASection,AIndex: Integer): Boolean;
-
+    }
   public
     constructor Create(AWorkbook: TsWorkbook; const AFormatString: String);
     destructor Destroy; override;
@@ -292,13 +293,11 @@ end;
 
 procedure TsNumFormatParser.CheckSection(ASection: Integer);
 var
-  el, next, i: Integer;
+  el, i: Integer;
   section: PsNumFormatSection;
   nfs, nfsTest: String;
   nf: TsNumberFormat;
-  datetimeFormats: set of TsNumberformat;
-  f1,f2: Integer;
-  decs: Byte;
+  formats: set of TsNumberFormat;
 begin
   if FStatus <> psOK then
     exit;
@@ -308,6 +307,12 @@ begin
 
   for el := 0 to High(section^.Elements) do
     case section^.Elements[el].Token of
+      nftZeroDecs:
+        section^.Decimals := section^.Elements[el].IntValue;
+      nftFracNumSpaceDigit, nftFracNumZeroDigit:
+        section^.FracNumerator := section^.Elements[el].IntValue;
+      nftFracDenomSpaceDigit, nftFracDenomZeroDigit:
+        section^.FracDenominator := section^.Elements[el].IntValue;
       nftPercent:
         section^.Kind := section^.Kind + [nfkPercent];
       nftExpChar:
@@ -370,13 +375,18 @@ begin
       section^.NumFormat := nfTimeInterval
     else
     begin
-      datetimeFormats := [nfShortDateTime, nfLongDate, nfShortDate, nfLongTime,
+      formats := [nfShortDateTime, nfLongDate, nfShortDate, nfLongTime,
         nfShortTime, nfLongTimeAM, nfShortTimeAM, nfDayMonth, nfMonthYear];
-      for nf in datetimeFormats do
+      for nf in formats do
       begin
         nfsTest := BuildDateTimeFormatString(nf, FWorkbook.FormatSettings);
         if Length(nfsTest) = Length(nfs) then
         begin
+          if SameText(nfs, nfsTest) then
+          begin
+            section^.NumFormat := nf;
+            break;
+          end;
           for i := 1 to Length(nfsTest) do
             case nfsTest[i] of
               '/': if not (nf in [nfLongTimeAM, nfShortTimeAM]) then
@@ -390,17 +400,28 @@ begin
             break;
           end;
         end;
-{
-        if SameText(nfs, BuildDateTimeFormatString(nf, FWorkbook.FormatSettings)) then
-        begin
-          section^.NumFormat := nf;
-          break;
-        end;
-        }
       end;
     end;
   end else
   begin
+    nfs := GetFormatString;
+    formats := [nfFixed, nfFixedTh, nfPercentage, nfExp, nfFraction];
+    for nf in formats do begin
+      nfsTest := BuildNumberFormatString(nf, FWorkbook.FormatSettings, section^.Decimals);
+      if SameText(nfs, nfsTest) then
+      begin
+        section^.NumFormat := nf;
+        break;
+      end;
+    end;
+    if (section^.NumFormat = nfCustom) and (nfkCurrency in section^.Kind) then
+    begin
+      section^.NumFormat := nfCurrency;
+      if section^.Color = scRed then
+        section^.NumFormat := nfCurrencyRed;
+    end;
+
+    {
     el := 0;
     while el < Length(section^.Elements) do
     begin
@@ -470,6 +491,7 @@ begin
     end;
     if (section^.NumFormat = nfCurrency) and (section^.Color = scRed) then
       section^.NumFormat := nfCurrencyRed;
+    }
   end;
 end;
 
@@ -743,7 +765,7 @@ function TsNumFormatParser.GetParsedSections(AIndex: Integer): TsNumFormatSectio
 begin
   Result := FSections[AIndex];
 end;
-
+  {
 function TsNumFormatParser.GetTokenIntValueAt(AToken: TsNumFormatToken;
   ASection, AIndex: Integer): Integer;
 begin
@@ -752,7 +774,7 @@ begin
   else
     Result := -1;
 end;
-
+   }
 { Returns true if the format elements contain at least one date/time token }
 function TsNumFormatParser.IsDateTimeFormat: Boolean;
 var
@@ -766,7 +788,7 @@ begin
     end;
   Result := false;
 end;
-
+  {
 function TsNumFormatParser.IsNumberAt(ASection, AIndex: Integer;
   out ANumFormat: TsNumberFormat; out ADecimals: Byte;
   out ANextIndex: Integer): Boolean;
@@ -837,7 +859,7 @@ begin
   Result := IsTokenAt(nftText, ASection, AIndex) and
     (FSections[ASection].Elements[AIndex].TextValue = AText);
 end;
-
+   }
 { Returns true if the format elements contain only time, no date tokens. }
 function TsNumFormatParser.IsTimeFormat: Boolean;
 var
@@ -851,7 +873,7 @@ begin
     end;
   Result := false;
 end;
-
+  {
 function TsNumFormatParser.IsTokenAt(AToken: TsNumFormatToken;
   ASection, AIndex: Integer): Boolean;
 begin
@@ -859,7 +881,7 @@ begin
             (AIndex < Length(FSections[ASection].Elements)) and
             (FSections[ASection].Elements[AIndex].Token = AToken);
 end;
-
+   }
 { Limits the decimals to 0 or 2, as required by Excel2. }
 procedure TsNumFormatParser.LimitDecimals;
 var
