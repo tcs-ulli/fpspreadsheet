@@ -620,6 +620,9 @@ begin
         nftPercent:
           Result := Result + '<number:text>%</number:text>';
 
+        nftFactor:
+          ;
+
         nftCurrSymbol:
           Result := Result + '<number:currency-symbol>' + Elements[el].TextValue + '</number:currency-symbol>';
 
@@ -635,6 +638,8 @@ begin
             end else
             if (el = nel-1) or (Elements[el+1].Token <> nftDecSep) then
               Result := Result + ' number:decimal-places="0"';
+            if (nfkHasFactor in Kind) and (Factor <> 0) then
+              Result := Result + Format(' number:display-factor="%.0f"', [1.0/Factor]);
             Result := Result + ' />';
           end;
 
@@ -740,6 +745,8 @@ begin
               Result := Result + ' number:min-integer-digits="' + IntToStr(n) + '"';
               n := IfThen(Elements[el+2].Token = nftZeroDecs, Elements[el+2].IntValue, 1);
               Result := Result + ' number:decimal-places="' + IntToStr(n) + '"';
+              if (nfkHasFactor in Kind) and (Factor <> 0) then
+                Result := Result + Format(' number:display-factor="%.0f"', [1.0/Factor]);
               Result := Result + ' />';
               inc(el, 2);
             end
@@ -750,6 +757,8 @@ begin
               Result := Result + '<number:number number:decimal-places="0"';
               n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
               Result := Result + ' number:min-integer-digits="' + IntToStr(n) + '"';
+              if (nfkHasFactor in Kind) and (Factor <> 0) then
+                Result := Result + Format(' number:display-factor="%.0f"', [1.0/Factor]);
               Result := Result + ' />';
             end;
           end;
@@ -2227,6 +2236,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     nfs: String;
     decs: Byte;
     s: String;
+    f: Double;
     fracInt, fracNum, fracDenom: Integer;
     grouping: Boolean;
     nex: Integer;
@@ -2253,8 +2263,18 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         if s = '' then s := GetAttrValue(node, 'decimal-places');
         if s <> '' then decs := StrToInt(s) else decs := 0;
         grouping := GetAttrValue(node, 'number:grouping') = 'true';
+        s := GetAttrValue(node, 'number:display-factor');
+        if s <> '' then f := StrToFloat(s, FPointSeparatorSettings) else f := 1.0;
         nf := IfThen(grouping, nfFixedTh, nfFixed);
         nfs := nfs + BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
+        if f <> 1.0 then begin
+          nf := nfCustom;
+          while (f > 1.0) do
+          begin
+            nfs := nfs + ',';
+            f := f / 1000;
+          end;
+        end;
       end else
       if nodeName = 'number:fraction' then
       begin

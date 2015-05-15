@@ -473,6 +473,7 @@ type
     nftExpSign,            // '+' or '-' in exponent
     nftExpDigits,          // '0' digits in exponent, count stored in IntValue
     nftPercent,            // '%' percent symbol
+    nftFactor,             // thousand separators at end of format string, each one divides value by 1000
     nftFracSymbol,         // '/' fraction symbol
     nftFracNumOptDigit,    // '#' in numerator, count stored in IntValue
     nftFracNumSpaceDigit,  // '?' in numerator, count stored in IntValue
@@ -502,7 +503,7 @@ type
   TsNumFormatElements = array of TsNumFormatElement;
 
   TsNumFormatKind = (nfkPercent, nfkExp, nfkCurrency, nfkFraction,
-    nfkDate, nfkTime, nfkTimeInterval, nfkHasColor, nfkHasThSep);
+    nfkDate, nfkTime, nfkTimeInterval, nfkHasColor, nfkHasThSep, nfkHasFactor);
   TsNumFormatKinds = set of TsNumFormatKind;
 
   TsNumFormatSection = record
@@ -510,6 +511,7 @@ type
     Kind: TsNumFormatKinds;
     NumFormat: TsNumberFormat;
     Decimals: Byte;
+    Factor: Double;
     FracInt: Integer;
     FracNumerator: Integer;
     FracDenominator: Integer;
@@ -721,7 +723,6 @@ const
   HEADER_FOOTER_INDEX_FIRST   = 0;
   HEADER_FOOTER_INDEX_ODD     = 1;
   HEADER_FOOTER_INDEX_EVEN    = 2;
-  HEADER_FOOTER_INDEX_ODDEVEN = 1;
   HEADER_FOOTER_INDEX_ALL     = 1;
 
 function BuildFormatStringFromSection(const ASection: TsNumFormatSection): String;
@@ -907,7 +908,7 @@ end;
 function BuildFormatStringFromSection(const ASection: TsNumFormatSection): String;
 var
   element: TsNumFormatElement;
-  i: Integer;
+  i, n: Integer;
 begin
   Result := '';
 
@@ -940,6 +941,16 @@ begin
         Result := Result + '/';
       nftPercent:
         Result := Result + '%';
+      nftFactor:
+        if element.IntValue <> 0 then
+        begin
+          n := element.IntValue;
+          while (n > 0) do
+          begin
+            Result := Result + ',';
+            dec(n);
+          end;
+        end;
       nftSpace:
         Result := Result + ' ';
       nftText:
@@ -1075,6 +1086,10 @@ begin
         exit;
       if Sections[i].Decimals <> ASections[i].Decimals then
         exit;
+      {
+      if Sections[i].Factor <> ASections[i].Factor then
+        exit;
+        }
       if Sections[i].FracInt <> ASections[i].FracInt then
         exit;
       if Sections[i].FracNumerator <> ASections[i].FracNumerator then
@@ -1099,7 +1114,7 @@ begin
         nftHour, nftMinute, nftSecond, nftMilliseconds,
         nftMonthMinute,
         nftIntOptDigit, nftIntZeroDigit, nftIntSpaceDigit, nftIntTh,
-        nftZeroDecs, nftOptDecs, nftSpaceDecs, nftExpDigits,
+        nftZeroDecs, nftOptDecs, nftSpaceDecs, nftExpDigits, nftFactor,
         nftFracNumOptDigit, nftFracNumSpaceDigit, nftFracNumZeroDigit,
         nftFracDenomOptDigit, nftFracDenomSpaceDigit, nftFracDenomZeroDigit,
         nftColor:

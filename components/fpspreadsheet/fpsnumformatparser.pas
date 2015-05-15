@@ -127,7 +127,7 @@ type
 implementation
 
 uses
-  TypInfo, LazUTF8, fpsutils, fpsCurrency;
+  TypInfo, Math, LazUTF8, fpsutils, fpsCurrency;
 
 
 function CreateNumFormatParams(AWorkbook: TsWorkbook;
@@ -315,6 +315,13 @@ begin
           FStatus := psErrMultipleExpChars
         else
           section^.Kind := section^.Kind + [nfkExp];
+      nftFactor:
+        if section^.Elements[el].IntValue <> 0 then
+        begin
+          section^.Elements[el].FloatValue := IntPower(10, -3*section^.Elements[el].IntValue);
+          section^.Factor := section^.Elements[el].FloatValue;
+          section^.Kind := section^.Kind + [nfkHasFactor];
+        end;
       nftFracSymbol:
         if (nfkFraction in section^.Kind) then
           FStatus := psErrMultipleFracSymbols
@@ -941,6 +948,8 @@ end;
 procedure TsNumFormatParser.ScanAndCount(ATestChar: Char; out ACount: Integer);
 begin
   ACount := 0;
+  if FToken <> ATestChar then
+    exit;
   repeat
     inc(ACount);
     FToken := NextToken;
@@ -1236,7 +1245,7 @@ procedure TsNumFormatParser.ScanNumber;
 var
   hasDecSep: Boolean;
   isFrac: Boolean;
-  n: Integer;
+  n, m: Integer;
   el: Integer;
   savedCurrent: PChar;
 begin
@@ -1254,12 +1263,13 @@ begin
              savedCurrent := FCurrent;
              if not (hasDecSep or isFrac) and (n = 1) and (FToken = ',') then
              begin
+               m := 0;
                FToken := NextToken;
                ScanAndCount('#', n);
                case n of
                  0: begin
-                      FToken := PrevToken;
                       ScanAndCount('0', n);
+                      ScanAndCount(',', m);
                       FToken := prevToken;
                       if n = 3 then
                         AddElement(nftIntTh, 3)
@@ -1268,6 +1278,7 @@ begin
                     end;
                  1: begin
                       ScanAndCount('0', n);
+                      ScanAndCount(',', m);
                       FToken := prevToken;
                       if n = 2 then
                         AddElement(nftIntTh, 2)
@@ -1276,6 +1287,7 @@ begin
                     end;
                  2: begin
                       ScanAndCount('0', n);
+                      ScanAndCount(',', m);
                       FToken := prevToken;
                       if (n = 1) then
                         AddElement(nftIntTh, 1)
@@ -1283,6 +1295,8 @@ begin
                         FCurrent := savedCurrent;
                     end;
                end;
+               if m > 0 then
+                 AddElement(nftFactor, m);
              end else
              begin
                FToken := PrevToken;
@@ -1297,6 +1311,7 @@ begin
            end;
       '0': begin
              ScanAndCount('0', n);
+             ScanAndCount(',', m);
              FToken := PrevToken;
              if hasDecSep then
                AddElement(nftZeroDecs, n)
@@ -1305,6 +1320,8 @@ begin
                AddElement(nftFracDenomZeroDigit, n)
              else
                AddElement(nftIntZeroDigit, n);
+             if m > 0 then
+               AddElement(nftFactor, m);
            end;
       '1'..'9':
            begin

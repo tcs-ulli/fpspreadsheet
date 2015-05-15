@@ -2967,6 +2967,8 @@ begin
 
   if nfkPercent in section.Kind then
     AValue := AValue * 100.0;
+  if nfkHasFactor in section.Kind then
+    AValue := AValue * section.Factor;
   if nfkTime in section.Kind then
     DecodeTime(AValue, hr, min, sec, ms);
   if nfkDate in section.Kind then
