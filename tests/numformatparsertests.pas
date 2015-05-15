@@ -19,11 +19,14 @@ type
     SollNumFormat: TsNumberFormat;
     SollSectionCount: Integer;
     SollDecimals: Byte;
+    SollFactor: Double;
+    SollNumeratorDigits: Integer;
+    SollDenominatorDigits: Integer;
     SollCurrencySymbol: String;
   end;
 
 var
-  ParserTestData: Array[0..8] of TParserTestData;
+  ParserTestData: Array[0..10] of TParserTestData;
 
 procedure InitParserTestData;
 
@@ -56,6 +59,9 @@ begin
     SollNumFormat := nfFixed;
     SollSectionCount := 1;
     SollDecimals := 0;
+    SollFactor := 0;
+    SollNumeratorDigits := 0;
+    SollDenominatorDigits := 0;
     SollCurrencySymbol := '';
   end;
   with ParserTestData[1] do begin
@@ -64,6 +70,9 @@ begin
     SollNumFormat := nfFixed;
     SollSectionCount := 1;
     SollDecimals := 3;
+    SollFactor := 0;
+    SollNumeratorDigits := 0;
+    SollDenominatorDigits := 0;
     SollCurrencySymbol := '';
   end;
   with ParserTestData[2] do begin
@@ -72,6 +81,9 @@ begin
     SollNumFormat := nfFixedTh;
     SollSectionCount := 1;
     SollDecimals := 3;
+    SollFactor := 0;
+    SollNumeratorDigits := 0;
+    SollDenominatorDigits := 0;
     SollCurrencySymbol := '';
   end;
   with ParserTestData[3] do begin
@@ -80,6 +92,9 @@ begin
     SollNumFormat := nfPercentage;
     SollSectionCount := 1;
     SollDecimals := 3;
+    SollFactor := 0;
+    SollNumeratorDigits := 0;
+    SollDenominatorDigits := 0;
     SollCurrencySymbol := '';
   end;
   with ParserTestData[4] do begin
@@ -88,6 +103,9 @@ begin
     SollNumFormat := nfLongTime;
     SollSectionCount := 1;
     SollDecimals := 0;
+    SollFactor := 0;
+    SollNumeratorDigits := 0;
+    SollDenominatorDigits := 0;
     SollCurrencySymbol := '';
   end;
   with ParserTestData[5] do begin
@@ -96,31 +114,65 @@ begin
     SollNumFormat := nfLongTimeAM;
     SollSectionCount := 1;
     SollDecimals := 0;
+    SollFactor := 0;
+    SollNumeratorDigits := 0;
+    SollDenominatorDigits := 0;
     SollCurrencySymbol := '';
   end;
   with ParserTestData[6] do begin
     FormatString := '[$-409]hh:mm:ss\ AM/PM;@';
-    SollFormatString := 'hh:mm:ss AM/PM';
-    SollNumFormat := nfLongTimeAM;
+    SollFormatString := 'hh:mm:ss\ AM/PM;@';
+    SollNumFormat := nfCustom;
     SollSectionCount := 2;
     SollDecimals := 0;
+    SollFactor := 0;
+    SollNumeratorDigits := 0;
+    SollDenominatorDigits := 0;
     SollCurrencySymbol := '';
   end;
   with ParserTestData[7] do begin
     FormatString := '[$-F400]dd.mm.yy\ hh:mm';
-    SollFormatString := 'dd.mm.yy hh:mm';
-    SollNumFormat := nfShortDateTime;
+    SollFormatString := 'DD.MM.YY\ hh:mm';
+    SollNumFormat := nfCustom;
     SollSectionCount := 1;
     SollDecimals := 0;
+    SollFactor := 0;
+    SollNumeratorDigits := 0;
+    SollDenominatorDigits := 0;
     SollCurrencySymbol := '';
   end;
   with ParserTestData[8] do begin
-    FormatString := '[$€] #,##0.00;-[$€] #,##0.00;{$€} 0.00';
-    SollFormatString := '"€" #,##0.00;-"€" #,##0.00;"€" 0.00';
+    FormatString := '[$€] #,##0.00;-[$€] #,##0.00;[$€] 0.00';
+    SollFormatString := '[$€] #,##0.00;-[$€] #,##0.00;[$€] 0.00';
     SollNumFormat := nfCurrency;
     SollSectionCount := 3;
     SollDecimals := 2;
+    SollFactor := 0;
+    SollNumeratorDigits := 0;
+    SollDenominatorDigits := 0;
     SollCurrencySymbol := '€';
+  end;
+  with ParserTestData[9] do begin
+    FormatString := '0.00,,';
+    SollFormatString := '0.00,,';
+    SollNumFormat := nfCustom;
+    SollSectionCount := 1;
+    SollDecimals := 2;
+    SollFactor := 1e-6;
+    SollNumeratorDigits := 0;
+    SollDenominatorDigits := 0;
+    SollCurrencySymbol := '';
+  end;
+  with ParserTestData[10] do begin
+    FormatString := '# ??/??';
+    SollFormatString := '# ??/??';
+    SollNumFormat := nfFraction;
+    SollSectionCount := 1;
+    SollDecimals := 0;
+    SollFactor := 0;
+    SollNumeratorDigits := 2;
+    SollDenominatorDigits := 2;
+    SollCurrencySymbol := '';
   end;
   {
   with ParserTestData[5] do begin
@@ -167,21 +219,28 @@ var
 begin
   MyWorkbook := TsWorkbook.Create;  // needed to provide the FormatSettings for the parser
   try
-    for i:=0 to 5 do begin
+    for i:=0 to High(ParserTestData) do begin
       parser := TsNumFormatParser.Create(MyWorkbook, ParserTestData[i].FormatString);
       try
         actual := parser.FormatString;
         CheckEquals(ParserTestData[i].SollFormatString, actual,
           'Test format string ' + ParserTestData[i].SollFormatString + ' construction mismatch');
-        CheckEquals(ord(ParserTestData[i].SollNumFormat), ord(parser.ParsedSections[0].NumFormat),
-          'Test format (' + GetEnumName(TypeInfo(TsNumberFormat), integer(ParserTestData[i].SollNumFormat)) +
-          ') detection mismatch');
+        CheckEquals(
+          GetEnumName(TypeInfo(TsNumberFormat), ord(ParserTestData[i].SollNumFormat)),
+          GetEnumName(TypeInfo(TsNumberformat), ord(parser.ParsedSections[0].NumFormat)),
+          'Test format (' + ParserTestData[i].FormatString + ') detection mismatch');
         CheckEquals(ParserTestData[i].SollDecimals, parser.ParsedSections[0].Decimals,
           'Test format (' + ParserTestData[i].FormatString + ') decimal detection mismatch');
         CheckEquals(ParserTestData[i].SollCurrencySymbol, parser.ParsedSections[0].CurrencySymbol,
           'Test format (' + ParserTestData[i].FormatString + ') currency symbol detection mismatch');
         CheckEquals(ParserTestData[i].SollSectionCount, parser.ParsedSectionCount,
           'Test format (' + ParserTestData[i].FormatString + ') section count mismatch');
+        CheckEquals(ParserTestData[i].SollFactor, parser.ParsedSections[0].Factor,
+          'Test format (' + ParserTestData[i].FormatString + ') factor mismatch');
+        CheckEquals(ParserTestData[i].SollNumeratorDigits, parser.ParsedSections[0].FracNumerator,
+          'Test format (' + ParserTestData[i].FormatString + ') numerator digits mismatch');
+        CheckEquals(ParserTestData[i].SollDenominatorDigits, parser.ParsedSections[0].FracDenominator,
+          'Test format (' + ParserTestData[i].FormatString + ') denominator digits mismatch');
       finally
         parser.Free;
       end;
