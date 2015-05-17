@@ -2802,7 +2802,7 @@ begin
   sfrsym := '/';
   if ADigits >= 0 then begin
     maxDenom := Round(IntPower(10, ADigits));
-    prec := 1/maxDenom;
+    prec := 0.5/maxDenom;
   end;
   numEl := Length(AElements);
 
@@ -2824,7 +2824,6 @@ begin
     end;
     sfrint := ProcessIntegerFormat(IntToStr(frint), fs, AElements, i,
       INT_TOKENS, false, (AElements[i].Token = nftIntTh));
-    //inc(i);
     while (i < numEl) and (AElements[i].Token in TERMINATING_TOKENS) do
     begin
       sintnumspace := sintnumspace + AElements[i].TextValue;
