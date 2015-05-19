@@ -305,10 +305,14 @@ begin
   section := @FSections[ASection];
   section^.Kind := [];
 
+  i := 0;
+
   for el := 0 to High(section^.Elements) do
     case section^.Elements[el].Token of
       nftZeroDecs:
         section^.Decimals := section^.Elements[el].IntValue;
+      nftIntZeroDigit, nftIntOptDigit, nftIntSpaceDigit:
+        i := section^.Elements[el].IntValue;
       nftFracNumSpaceDigit, nftFracNumZeroDigit:
         section^.FracNumerator := section^.Elements[el].IntValue;
       nftFracDenomSpaceDigit, nftFracDenomZeroDigit:
@@ -331,7 +335,10 @@ begin
         if (nfkFraction in section^.Kind) then
           FStatus := psErrMultipleFracSymbols
         else
+        begin
           section^.Kind := section^.Kind + [nfkFraction];
+          section^.FracInt := i;
+        end;
       nftCurrSymbol:
         begin
           if (nfkCurrency in section^.Kind) then
@@ -405,13 +412,19 @@ begin
   end else
   begin
     nfs := GetFormatString;
-    formats := [nfFixed, nfFixedTh, nfPercentage, nfExp, nfFraction];
-    for nf in formats do begin
-      nfsTest := BuildNumberFormatString(nf, FWorkbook.FormatSettings, section^.Decimals);
-      if SameText(nfs, nfsTest) then
-      begin
-        section^.NumFormat := nf;
-        break;
+    nfsTest := BuildFractionFormatString(section^.FracInt > 0, section^.FracNumerator, section^.FracDenominator);
+    if sameText(nfs, nfsTest) then
+      section^.NumFormat := nfFraction
+    else
+    begin
+      formats := [nfFixed, nfFixedTh, nfPercentage, nfExp];
+      for nf in formats do begin
+        nfsTest := BuildNumberFormatString(nf, FWorkbook.FormatSettings, section^.Decimals);
+        if SameText(nfs, nfsTest) then
+        begin
+          section^.NumFormat := nf;
+          break;
+        end;
       end;
     end;
     if (section^.NumFormat = nfCustom) and (nfkCurrency in section^.Kind) then

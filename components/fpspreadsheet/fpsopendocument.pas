@@ -230,7 +230,7 @@ implementation
 
 uses
   StrUtils, Variants, LazFileUtils, URIParser,
-  fpsPatches, fpsStrings, fpsStreams, fpsExprParser;
+  fpsStrings, fpsStreams, fpsExprParser;
 
 const
   { OpenDocument general XML constants }
@@ -5364,6 +5364,7 @@ var
   r1,c1,r2,c2: Cardinal;
   fmt: TsCellFormat;
   numFmtParams: TsNumFormatParams;
+  h,m,s,ms: Word;
 begin
   Unused(ARow, ACol);
 
@@ -5395,7 +5396,9 @@ begin
 
   if IsTimeIntervalformat(numFmtParams) then
   begin
-    strValue := FormatDateTime(ISO8601FormatHoursOverflow, AValue, [fdoInterval]);
+    DecodeTime(AValue, h,m,s,ms);
+    strValue := Format('PT%02dH%02dM%02d.%03dS', [trunc(AValue)*24+h, m, s, ms]);
+//    strValue := FormatDateTime(ISO8601FormatHoursOverflow, AValue, [fdoInterval]);
     displayStr := FWorksheet.ReadAsUTF8Text(ACell);
 //    displayStr := FormatDateTime(fmt.NumberFormatStr, AValue, [fdoInterval]);
     AppendToStream(AStream, Format(

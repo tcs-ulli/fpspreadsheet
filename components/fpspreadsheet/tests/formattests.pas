@@ -27,10 +27,10 @@ var
   SollNumberFormats: array[0..9] of TsNumberFormat;
   SollNumberDecimals: array[0..9] of word;
 
-  SollDateTimeStrings: array[0..4, 0..9] of string;
+  SollDateTimeStrings: array[0..4, 0..8] of string;
   SollDateTimes: array[0..4] of TDateTime;
-  SollDateTimeFormats: array[0..9] of TsNumberFormat;
-  SollDateTimeFormatStrings: array[0..9] of String;
+  SollDateTimeFormats: array[0..8] of TsNumberFormat;
+  SollDateTimeFormatStrings: array[0..8] of String;
 
   SollColWidths: array[0..1] of Single;
   SollRowHeights: Array[0..2] of Single;
@@ -256,7 +256,7 @@ begin
   SollDateTimeFormats[6] := nfCustom;          SollDateTimeFormatStrings[6] := 'dd/mmm';
   SolLDateTimeFormats[7] := nfCustom;          SollDateTimeFormatStrings[7] := 'mmm/yy';
   SollDateTimeFormats[8] := nfCustom;          SollDateTimeFormatStrings[8] := 'nn:ss';
-  SollDateTimeFormats[9] := nfTimeInterval;    SollDateTimeFormatStrings[9] := '';
+//  SollDateTimeFormats[9] := nfTimeInterval;    SollDateTimeFormatStrings[9] := '';
 
   for i:=Low(SollDateTimes) to High(SollDateTimes) do
   begin
@@ -269,7 +269,7 @@ begin
     SollDateTimeStrings[i, 6] := FormatDateTime(SpecialDateTimeFormat('dm', fs, false), SollDateTimes[i], fs);
     SollDateTimeStrings[i, 7] := FormatDateTime(SpecialDateTimeFormat('my', fs, false), SollDateTimes[i], fs);
     SollDateTimeStrings[i, 8] := FormatDateTime(SpecialDateTimeFormat('ms', fs, false), SollDateTimes[i], fs);
-    SollDateTimeStrings[i, 9] := FormatDateTime('[h]:mm:ss', SollDateTimes[i], fs, [fdoInterval]);
+//    SollDateTimeStrings[i, 9] := FormatDateTime('[h]:mm:ss', SollDateTimes[i], fs, [fdoInterval]);
   end;
 
   // Column width

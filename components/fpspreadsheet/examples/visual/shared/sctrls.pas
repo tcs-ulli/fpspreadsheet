@@ -44,6 +44,71 @@ implementation
 uses
   Math, ButtonPanel, fpsUtils;
 
+{@@ ----------------------------------------------------------------------------
+  Concatenates the day names specified in ADayNames to a single string. If all
+  daynames are empty AEmptyStr is returned
+
+  @param   ADayNames   Array[1..7] of day names as used in the Formatsettings
+  @param   AEmptyStr   Is returned if all day names are empty
+  @return  String having all day names concatenated and separated by the
+           DefaultFormatSettings.ListSeparator
+-------------------------------------------------------------------------------}
+function DayNamesToString(const ADayNames: TWeekNameArray;
+  const AEmptyStr: String): String;
+var
+  i: Integer;
+  isEmpty: Boolean;
+begin
+  isEmpty := true;
+  for i:=1 to 7 do
+    if ADayNames[i] <> '' then
+    begin
+      isEmpty := false;
+      break;
+    end;
+
+  if isEmpty then
+    Result := AEmptyStr
+  else
+  begin
+    Result := ADayNames[1];
+    for i:=2 to 7 do
+      Result := Result + DefaultFormatSettings.ListSeparator + ' ' + ADayNames[i];
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Concatenates the month names specified in AMonthNames to a single string.
+  If all month names are empty AEmptyStr is returned
+
+  @param   AMonthNames  Array[1..12] of month names as used in the Formatsettings
+  @param   AEmptyStr    Is returned if all month names are empty
+  @return  String having all month names concatenated and separated by the
+           DefaultFormatSettings.ListSeparator
+-------------------------------------------------------------------------------}
+function MonthNamesToString(const AMonthNames: TMonthNameArray;
+  const AEmptyStr: String): String;
+var
+  i: Integer;
+  isEmpty: Boolean;
+begin
+  isEmpty := true;
+  for i:=1 to 12 do
+    if AMonthNames[i] <> '' then
+    begin
+      isEmpty := false;
+      break;
+    end;
+
+  if isEmpty then
+    Result := AEmptyStr
+  else
+  begin
+    Result := AMonthNames[1];
+    for i:=2 to 12 do
+      Result := Result + DefaultFormatSettings.ListSeparator + ' ' + AMonthNames[i];
+  end;
+end;
 
 { TMonthDayNamesEdit }
 

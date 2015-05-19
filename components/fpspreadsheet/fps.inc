@@ -21,11 +21,6 @@
 { The next defines activate code duplicated from new compiler versions in case
   an old compiler is used. }
 
-{ Numberformats require an extended version of FormatDateTime (in SysUtils)
-  which is not available before FPC 3.0. Define FPS_FORMATDATETIME if the
-  compiler used is older. }
-{$DEFINE FPS_FORMATDATETIME}
-
 { fpspreadsheet requires the function VarIsBool which was introduced by
   fpc 2.6.4. If an older FPC versions is used define FPS_VARISBOOL. Keep
   undefined for the current FPC version. }
