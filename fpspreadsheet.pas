@@ -792,7 +792,7 @@ implementation
 
 uses
   Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
-  fpsPatches, fpsStrings, uvirtuallayer_ole,
+  fpsStrings, uvirtuallayer_ole,
   fpsUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
   fpsNumFormat, fpsNumFormatParser;
 
@@ -3976,6 +3976,7 @@ var
   fmt: TsCellFormat;
   numFmtParams: TsNumFormatParams;
   maxDig: Integer;
+  isMixed: Boolean;
 begin
   if ACell = nil then
     exit;
@@ -3998,10 +3999,10 @@ begin
     exit;
   end;
 
-  if TryFractionStrToFloat(AValue, number, maxdig) then
+  if TryFractionStrToFloat(AValue, number, ismixed, maxdig) then
   begin
     WriteNumber(ACell, number);
-    WriteFractionFormat(ACell, true, maxdig, maxdig);
+    WriteFractionFormat(ACell, ismixed, maxdig, maxdig);
     exit;
   end;
 

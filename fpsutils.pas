@@ -111,18 +111,10 @@ function AddAMPM(const ATimeFormatString: String;
 function StripAMPM(const ATimeFormatString: String): String;
 function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
 function AddIntervalBrackets(AFormatString: String): String;
-function DayNamesToString(const ADayNames: TWeekNameArray;
-  const AEmptyStr: String): String;
 function MakeLongDateFormat(ADateFormat: String): String;
 function MakeShortDateFormat(ADateFormat: String): String;
-function MonthNamesToString(const AMonthNames: TMonthNameArray;
-  const AEmptyStr: String): String;
 function SpecialDateTimeFormat(ACode: String;
   const AFormatSettings: TFormatSettings; ForWriting: Boolean): String;
-{
-procedure SplitFormatString(const AFormatString: String; out APositivePart,
-  ANegativePart, AZeroPart: String);
- }
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
 function ConvertFloatToStr(AValue: Double; AParams: TsNumFormatParams;
@@ -132,10 +124,10 @@ procedure FloatToFraction(AValue: Double; AMaxDenominator: Int64;
 function TryStrToFloatAuto(AText: String; out ANumber: Double;
   out ADecimalSeparator, AThousandSeparator: Char; out AWarning: String): Boolean;
 function TryFractionStrToFloat(AText: String; out ANumber: Double;
-  out AMaxDigits: Integer): Boolean;
+  out AIsMixed: Boolean; out AMaxDigits: Integer): Boolean;
 
-function TwipsToPts(AValue: Integer): Single;  inline;
-function PtsToTwips(AValue: Single): Integer;  inline;
+function TwipsToPts(AValue: Integer): Single; inline;
+function PtsToTwips(AValue: Single): Integer; inline;
 function cmToPts(AValue: Double): Double; inline;
 function PtsToCm(AValue: Double): Double; inline;
 function InToMM(AValue: Double): Double; inline;
@@ -1348,39 +1340,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Concatenates the day names specified in ADayNames to a single string. If all
-  daynames are empty AEmptyStr is returned
-
-  @param   ADayNames   Array[1..7] of day names as used in the Formatsettings
-  @param   AEmptyStr   Is returned if all day names are empty
-  @return  String having all day names concatenated and separated by the
-           DefaultFormatSettings.ListSeparator
--------------------------------------------------------------------------------}
-function DayNamesToString(const ADayNames: TWeekNameArray;
-  const AEmptyStr: String): String;
-var
-  i: Integer;
-  isEmpty: Boolean;
-begin
-  isEmpty := true;
-  for i:=1 to 7 do
-    if ADayNames[i] <> '' then
-    begin
-      isEmpty := false;
-      break;
-    end;
-
-  if isEmpty then
-    Result := AEmptyStr
-  else
-  begin
-    Result := ADayNames[1];
-    for i:=2 to 7 do
-      Result := Result + DefaultFormatSettings.ListSeparator + ' ' + ADayNames[i];
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
   Approximates a floating point value as a fraction and returns the values of
   numerator and denominator.
 
@@ -1533,39 +1492,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Concatenates the month names specified in AMonthNames to a single string.
-  If all month names are empty AEmptyStr is returned
-
-  @param   AMonthNames  Array[1..12] of month names as used in the Formatsettings
-  @param   AEmptyStr    Is returned if all month names are empty
-  @return  String having all month names concatenated and separated by the
-           DefaultFormatSettings.ListSeparator
--------------------------------------------------------------------------------}
-function MonthNamesToString(const AMonthNames: TMonthNameArray;
-  const AEmptyStr: String): String;
-var
-  i: Integer;
-  isEmpty: Boolean;
-begin
-  isEmpty := true;
-  for i:=1 to 12 do
-    if AMonthNames[i] <> '' then
-    begin
-      isEmpty := false;
-      break;
-    end;
-
-  if isEmpty then
-    Result := AEmptyStr
-  else
-  begin
-    Result := AMonthNames[1];
-    for i:=2 to 12 do
-      Result := Result + DefaultFormatSettings.ListSeparator + ' ' + AMonthNames[i];
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
   Creates the formatstrings for the date/time codes "dm", "my", "ms" and "msz"
   out of the formatsettings.
 
@@ -1610,81 +1536,6 @@ begin
     Result := ACode;
 end;
 
-{@@ ----------------------------------------------------------------------------
-  Currency formatting strings consist of three parts, separated by
-  semicolons, which are valid for positive, negative or zero values.
-  Splits such a formatting string at the positions of the semicolons and
-  returns the sections. If semicolons are used for other purposed within
-  sections they have to be quoted by " or escaped by \. If the formatting
-  string contains less sections than three the missing strings are returned
-  as empty strings.
-
-  @param   AFormatString  String of number formatting codes.
-  @param   APositivePart  First section of the formatting string which is valid
-                          for positive numbers (or positive and zero, if there
-                          are only two sections)
-  @param   ANegativePart  Second section of the formatting string which is valid
-                          for negative numbers
-  @param   AZeroPart      Third section of the formatting string for zero.
--------------------------------------------------------------------------------}
-(*
-procedure SplitFormatString(const AFormatString: String; out APositivePart,
-  ANegativePart, AZeroPart: String);
-
-  procedure AddToken(AToken: Char; AWhere:Byte);
-  begin
-    case AWhere of
-      0: APositivePart := APositivePart + AToken;
-      1: ANegativePart := ANegativePart + AToken;
-      2: AZeroPart := AZeroPart + AToken;
-    end;
-  end;
-
-var
-  P, PStart, PEnd: PChar;
-  token: Char;
-  where: Byte;  // 0 = positive part, 1 = negative part, 2 = zero part
-begin
-  APositivePart := '';
-  ANegativePart := '';
-  AZeroPart := '';
-  if AFormatString = '' then
-    exit;
-
-  PStart := PChar(@AFormatString[1]);
-  PEnd := PStart + Length(AFormatString);
-  P := PStart;
-  where := 0;
-  while P < PEnd do begin
-    token := P^;
-    case token of
-      '"': begin   // Let quoted text intact
-             AddToken(token, where);
-             inc(P);
-             token := P^;
-             while (P < PEnd) and (token <> '"') do begin
-               AddToken(token, where);
-               inc(P);
-               token := P^;
-             end;
-             AddToken(token, where);
-           end;
-      ';': begin  // Separator between parts
-             inc(where);
-             if where = 3 then
-               exit;
-           end;
-      '\': begin  // Skip "Escape" character and add next char immediately
-             inc(P);
-             token := P^;
-             AddToken(token, where);
-           end;
-      else AddToken(token, where);
-    end;
-    inc(P);
-  end;
-end;
-         *)
 {@@ ----------------------------------------------------------------------------
   Creates a "time interval" format string having the first time code identifier
   in square brackets.
@@ -1894,7 +1745,7 @@ end;
   @example  AText := '1 3/4' --> ANumber = 1.75; AMaxDigits = 1; Result = true
 -------------------------------------------------------------------------------}
 function TryFractionStrToFloat(AText: String; out ANumber: Double;
-  out AMaxDigits: Integer): Boolean;
+  out AIsMixed: Boolean; out AMaxDigits: Integer): Boolean;
 var
   p: Integer;
   s, sInt, sNum, sDenom: String;
@@ -1931,6 +1782,7 @@ begin
   if sInt <> '' then
     ANumber := ANumber + i;
 
+  AIsMixed := (sInt <> '');
   AMaxDigits := Length(sDenom);
 
   Result := true;

@@ -837,21 +837,21 @@ object MainForm: TMainForm
       WorkbookSource = WorkbookSource
       Caption = 'Fraction (1 digit)'
       NumberFormat = nfFraction
-      NumberFormatString = '# #/#'
+      NumberFormatString = '# ?/?'
     end
     object AcNumFormatFraction2: TsNumberFormatAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'Fraction (2 digits)'
       NumberFormat = nfFraction
-      NumberFormatString = '# ##/##'
+      NumberFormatString = '# ??/??'
     end
     object AcNumFormatFraction3: TsNumberFormatAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'Fraction (3 digits)'
       NumberFormat = nfFraction
-      NumberFormatString = '# ###/###'
+      NumberFormatString = '# ???/???'
     end
     object AcNumFormatDateTime: TsNumberFormatAction
       Category = 'FPSpreadsheet'
