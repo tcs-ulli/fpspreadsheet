@@ -127,8 +127,8 @@ procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
 function ConvertFloatToStr(AValue: Double; AParams: TsNumFormatParams;
   AFormatSettings: TFormatSettings): String;
-procedure FloatToFraction(AValue, APrecision: Double;
-  AMaxNumerator, AMaxDenominator: Int64; out ANumerator, ADenominator: Int64);
+procedure FloatToFraction(AValue: Double; AMaxDenominator: Int64;
+  out ANumerator, ADenominator: Int64);
 function TryStrToFloatAuto(AText: String; out ANumber: Double;
   out ADecimalSeparator, AThousandSeparator: Char; out AWarning: String): Boolean;
 function TryFractionStrToFloat(AText: String; out ANumber: Double;
@@ -1385,13 +1385,12 @@ end;
   numerator and denominator.
 
   @param   AValue           Floating point value to be analyzed
-  @param   AMaxNumerator    Maximum value of the numerator allowed
   @param   AMaxDenominator  Maximum value of the denominator allowed
   @param   ANumerator       (out) Numerator of the best approximating fraction
   @param   ADenominator     (out) Denominator of the best approximating fraction
 -------------------------------------------------------------------------------}
-procedure FloatToFraction(AValue, APrecision: Double;
-  AMaxNumerator, AMaxDenominator: Int64; out ANumerator, ADenominator: Int64);
+procedure FloatToFraction(AValue: Double; AMaxDenominator: Int64;
+  out ANumerator, ADenominator: Int64);
 // Uses method of continued fractions, adapted version from a function in
 // Bart Broersma's fractions.pp unit:
 // http://svn.code.sf.net/p/flyingsheep/code/trunk/ConsoleProjecten/fractions/
@@ -1400,12 +1399,10 @@ const
   MinInt64 = Low(Int64);
 var
   H1, H2, K1, K2, A, NewA, tmp, prevH1, prevK1: Int64;
-  B, diff, test: Double;
+  B, test, diff, prevdiff: Double;
   PendingOverflow: Boolean;
   i: Integer = 0;
 begin
-  Assert((APrecision > 0) and (APrecision < 1));
-
   if (AValue > MaxInt64) or (AValue < MinInt64) then
     raise Exception.Create('Range error');
 
@@ -1424,6 +1421,7 @@ begin
   NewA := Round(Floor(B));
   prevH1 := H1;
   prevK1 := K1;
+  prevdiff := 1E308;
   repeat
     inc(i);
     A := NewA;
@@ -1435,9 +1433,11 @@ begin
     K2 := tmp;
     test := H1/K1;
     diff := test - AValue;
-    if (abs(diff) < APrecision) then
-      break;
-    if (abs(H1) >= AMaxNumerator) or (abs(K1) >= AMaxDenominator) then
+    { Use the previous result if the denominator becomes larger than the allowed
+      value, or if the difference becomes worse because the "best" result has
+      been missed due to rounding error - this is more stable than using a
+      predefined precision in comparing diff with zero. }
+    if (abs(K1) >= AMaxDenominator) or (abs(diff) > abs(prevdiff)) then
     begin
       H1 := prevH1;
       K1 := prevK1;
@@ -1454,6 +1454,7 @@ begin
       NewA := Round(Floor(B));
     prevH1 := H1;
     prevK1 := K1;
+    prevdiff := diff;
   until PendingOverflow;
   ANumerator := H1;
   ADenominator := K1;
@@ -2794,7 +2795,7 @@ var
   sfrint, sfrnum, sfrdenom: String;
   sfrsym, sintnumspace, snumsymspace, ssymdenomspace: String;
   i, numEl: Integer;
-  prec: Double;
+  //prec: Double;
 begin
   sintnumspace := '';
   snumsymspace := '';
@@ -2802,7 +2803,8 @@ begin
   sfrsym := '/';
   if ADigits >= 0 then begin
     maxDenom := Round(IntPower(10, ADigits));
-    prec := 0.5/maxDenom;
+   // prec := 0.5/maxDenom;
+    //prec := 0.001/maxDenom;
   end;
   numEl := Length(AElements);
 
@@ -2816,7 +2818,8 @@ begin
     end else
       frint := 0;
     if ADigits >= 0 then
-      FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom)
+      FloatToFraction(AValue, maxdenom, frnum, frdenom)
+//      FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom)
     else
     begin
       frdenom := -ADigits;
@@ -2834,7 +2837,8 @@ begin
     // "normal" fraction
     sfrint := '';
     if ADigits > 0 then
-      FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom)
+//      FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom)
+      FloatToFraction(AValue, maxdenom, frnum, frdenom)
     else
     begin
       frdenom := -ADigits;

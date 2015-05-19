@@ -32,6 +32,8 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
 
+    procedure FractionTest(AMaxDigits: Integer);
+
   published
     // Tests getting Excel style A1 cell locations from row/column based locations.
     // Bug 26447
@@ -52,10 +54,16 @@ type
     procedure TestReadBufStream;
     procedure TestWriteBufStream;
     // Test fractions
-    procedure FractionTest;
+//    procedure FractionTest_0;
+    procedure FractionTest_1;
+    procedure FractionTest_2;
+    procedure FractionTest_3;
   end;
 
 implementation
+
+uses
+  Math;
 
 const
   InternalSheet = 'Internal'; //worksheet name
@@ -397,25 +405,65 @@ begin
   CheckEquals(s, GetCellString(r, c, flags));
 end;
 
-procedure TSpreadInternalTests.FractionTest;
+procedure TSpreadInternalTests.FractionTest(AMaxDigits: Integer);
 const
   N = 300;
-  DIGITS = 3;
 var
-  i, j: Integer;
+  j: Integer;
   sollNum, sollDenom: Integer;
   sollValue: Double;
+  actualNum, actualDenom: Int64;
+  max: Integer;
+  prec: Double;
+begin
+  max := Round(IntPower(10, AMaxDigits));
+  prec := 0.001/max;
+  for sollDenom := 1 to max-1 do
+    for sollNum := 1 to sollDenom-1 do begin
+      sollValue := StrToFloat(FormatFloat('0.000000000', sollNum/sollDenom));
+      FloatToFraction(sollValue, max, actualNum, actualDenom);
+      //FloatToFraction(sollValue, prec, max, max, actualNum, actualDenom);
+      if (actualnum*solldenom div actualdenom <> sollnum) then
+        fail(Format('Conversion error: %g = %d/%d turns to %d/%d (=%g)', [sollValue, sollNum, sollDenom, actualNum, actualDenom, actualNum/actualdenom]));
+    end;
+end;
+                             (*
+procedure TSpreadInternalTests.FractionTest_0;
+const
+  N = 300;
+var
+  j: Integer;
+  sollNum, sollDenom: Integer;
+  sollvalue: Double;
   actualNum, actualDenom: Int64;
 begin
   sollNum := 1;
   for j := 1 to N do
   begin
     sollDenom := j;
-    sollValue := StrToFloat(FormatFloat('0.00000', sollNum/sollDenom));
-    FloatToFraction(sollvalue, 0.1/DIGITS, DIGITS, DIGITS, actualNum, actualDenom);
+//    sollValue := StrToFloat(FormatFloat('0.00000', sollNum/sollDenom));
+    sollValue := 1.0/sollDenom;
+//    FloatToFraction(sollvalue, 0.1/DIGITS, DIGITS, DIGITS, actualNum, actualDenom);
+    FloatToFraction(sollvalue, 1000, actualNum, actualDenom);
     if actualDenom > sollDenom then
       fail(Format('Conversion error: approximated %d/%d turns to %d/%d', [sollNum, sollDenom, actualNum, actualDenom]));
   end;
+end;
+*)
+
+procedure TSpreadInternalTests.FractionTest_1;
+begin
+  FractionTest(1);
+end;
+
+procedure TSpreadInternalTests.FractionTest_2;
+begin
+  FractionTest(2);
+end;
+
+procedure TSpreadInternalTests.FractionTest_3;
+begin
+  FractionTest(3);
 end;
 
 procedure TSpreadInternalTests.SetUp;
