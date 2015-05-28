@@ -144,7 +144,7 @@ var
 
 var
   { the palette of the default BIFF2 colors as "big-endian color" values }
-  PALETTE_BIFF2: array[$0..$07] of TsColorValue = (
+  PALETTE_BIFF2: array[$0..$07] of TsColor = (
     $000000,  // $00: black
     $FFFFFF,  // $01: white
     $FF0000,  // $02: red
@@ -159,7 +159,7 @@ var
 implementation
 
 uses
-  Math, fpsStrings, fpsReaderWriter;
+  Math, fpsStrings, fpsReaderWriter, fpsPalette;
 
 const
   { Excel record IDs }
@@ -419,8 +419,12 @@ begin
 end;
 
 procedure TsSpreadBIFF2Reader.ReadFONTCOLOR(AStream: TStream);
+var
+  lColor: Word;
 begin
-  FFont.Color := WordLEToN(AStream.ReadWord);
+  lColor := WordLEToN(AStream.ReadWord);   // Palette index
+  FFont.Color := IfThen(lColor = SYS_DEFAULT_WINDOW_TEXT_COLOR,
+    scBlack, FPalette[lColor]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1533,7 +1537,7 @@ begin
   AStream.WriteWord(WordToLE(2));
 
   { Font color index, only first 8 palette entries allowed! }
-  AStream.WriteWord(WordToLE(word(FixColor(font.Color))));
+  AStream.WriteWord(WordToLE(PaletteIndex(font.Color)));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1987,6 +1991,6 @@ initialization
  {$ENDIF}
 
   RegisterSpreadFormat(TsSpreadBIFF2Reader, TsSpreadBIFF2Writer, sfExcel2);
-  MakeLEPalette(@PALETTE_BIFF2, Length(PALETTE_BIFF2));
+  MakeLEPalette(PALETTE_BIFF2);
 
 end.

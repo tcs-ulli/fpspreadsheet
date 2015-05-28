@@ -28,6 +28,9 @@ type
   {@@ Set of characters }
   TsDecsChars = set of char;
 
+  {@@ Color value, composed of r(ed), g(reen) and b(lue) components }
+  TRGBA = record r, g, b, a: byte end;
+
 const
   {@@ Date formatting string for unambiguous date/time display as strings
       Can be used for text output when date/time cell support is not available }
@@ -50,8 +53,6 @@ function WideStringToLE(const AValue: WideString): WideString;
 function WordLEtoN(AValue: Word): Word;
 function DWordLEtoN(AValue: Cardinal): Cardinal;
 function WideStringLEToN(const AValue: WideString): WideString;
-
-function LongRGBToExcelPhysical(const RGB: DWord): DWord;
 
 // Other routines
 function ParseIntervalString(const AStr: string;
@@ -140,13 +141,18 @@ function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double; inline;
 function PtsToPx(AValue: Double; AScreenPixelsPerInch: Integer): Integer; inline;
 function HTMLLengthStrToPts(AValue: String; DefaultUnits: String = 'pt'): Double;
 
-function HTMLColorStrToColor(AValue: String): TsColorValue;
-function ColorToHTMLColorStr(AValue: TsColorValue; AExcelDialect: Boolean = false): String;
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 function ValidXMLText(var AText: ansistring; ReplaceSpecialChars: Boolean = true): Boolean;
 
-function TintedColor(AColor: TsColorValue; tint: Double): TsColorValue;
-function HighContrastColor(AColorValue: TsColorValue): TsColor;
+function ColorToHTMLColorStr(AValue: TsColor; AExcelDialect: Boolean = false): String;
+function HTMLColorStrToColor(AValue: String): TsColor;
+
+function GetColorName(AColor: TsColor): String;
+function HighContrastColor(AColor: TsColor): TsColor;
+function IsPaletteIndex(AColor: TsColor): Boolean;
+function LongRGBToExcelPhysical(const RGB: DWord): DWord;
+function SetAsPaletteIndex(AIndex: Integer): TsColor;
+function TintedColor(AColor: TsColor; tint: Double): TsColor;
 
 function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
 
@@ -182,9 +188,6 @@ implementation
 
 uses
   Math, lazutf8, fpsStrings;
-
-type
-  TRGBA = record r, g, b, a: byte end;
 
 const
   POS_CURR_FMT: array[0..3] of string = (
@@ -353,29 +356,6 @@ begin
     {$ENDIF}
   {$ELSE}
     Result:=AValue;
-  {$ENDIF}
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Converts the RGB part of a LongRGB logical structure to its physical representation.
-  In other words: RGBA (where A is 0 and omitted in the function call) => ABGR
-  Needed for conversion of palette colors.
-
-  @param  RGB  DWord value containing RGBA bytes in big endian byte-order
-  @return      DWord containing RGB bytes in little-endian byte-order (A = 0)
--------------------------------------------------------------------------------}
-function LongRGBToExcelPhysical(const RGB: DWord): DWord;
-begin
-  {$IFDEF FPC}
-  {$IFDEF ENDIAN_LITTLE}
-  result := RGB shl 8; //tags $00 at end for the A byte
-  result := SwapEndian(result); //flip byte order
-  {$ELSE}
-  //Big endian
-  result := RGB; //leave value as is //todo: verify if this turns out ok
-  {$ENDIF}
-  {$ELSE}
-  // messed up result
   {$ENDIF}
 end;
 
@@ -1968,13 +1948,83 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Converts a HTML color string to a TsColorValue. Need for the ODS file format.
+  Determines the name of a color from its rgb value
+-------------------------------------------------------------------------------}
+function GetColorName(AColor: TsColor): string;
+var
+  rgba: TRGBA absolute AColor;
+begin
+  case AColor of
+    scAqua       : Result := rsAqua;
+    scBeige      : Result := rsBeige;
+    scBlack      : Result := rsBlack;
+    scBlue       : Result := rsBlue;
+    scBlueGray   : Result := rsBlueGray;
+    scBrown      : Result := rsBrown;
+    scCoral      : Result := rsCoral;
+    scCyan       : Result := rsCyan;
+    scDarkBlue   : Result := rsDarkBlue;
+    scDarkGreen  : Result := rsDarkGreen;
+    scDarkPurple : Result := rsDarkPurple;
+    scDarkRed    : Result := rsDarkRed;
+    scDarkTeal   : Result := rsDarkTeal;
+    scGold       : Result := rsGold;
+    scGray       : Result := rsGray;
+    scGray10pct  : Result := rsGray10pct;
+    scGray20pct  : Result := rsGray20pct;
+    scGray40pct  : Result := rsGray40pct;
+    scGray80pct  : Result := rsGray80pct;
+    scGreen      : Result := rsGreen;
+    scIceBlue    : Result := rsIceBlue;
+    scIndigo     : Result := rsIndigo;
+    scIvory      : Result := rsIvory;
+    scLavander   : Result := rsLavander;
+    scLightBlue  : Result := rsLightBlue;
+    scLightGreen : Result := rsLightGreen;
+    scLightOrange: Result := rsLightOrange;
+    scLightTurquoise: Result := rsLightTurquoise;
+    scLightYellow: Result := rsLightYellow;
+    scLime       : Result := rsLime;
+    scMagenta    : Result := rsMagenta;
+    scNavy       : Result := rsNavy;
+    scOceanBlue  : Result := rsOceanBlue;
+    scOlive      : Result := rsOlive;
+    scOliveGreen : Result := rsOliveGreen;
+    scOrange     : Result := rsOrange;
+    scPaleBlue   : Result := rsPaleBlue;
+    scPeriwinkle : Result := rsPeriwinkle;
+    scPink       : Result := rsPink;
+    scPlum       : Result := rsPlum;
+    scPurple     : Result := rsPurple;
+    scRed        : Result := rsRed;
+    scRose       : Result := rsRose;
+    scSeaGreen   : Result := rsSeaGreen;
+    scSilver     : Result := rsSilver;
+    scSkyBlue    : Result := rsSkyBlue;
+    scTan        : Result := rsTan;
+    scTeal       : Result := rsTeal;
+    scVeryDarkGreen: Result := rsVeryDarkGreen;
+//    scViolet     : Result := rsViolet;
+    scWheat      : Result := rsWheat;
+    scWhite      : Result := rsWhite;
+    scYellow     : Result := rsYellow;
+    scTransparent: Result := rsTransparent;
+    scNotDefined : Result := rsNotDefined;
+    else           if rgba.a = 0 then
+                     Result := Format('r%d g%d b%d', [rgba.r, rgba.g, rgba.b])
+                   else
+                     Result := '';
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts a HTML color string to a TsColor alue. Needed for the ODS file format.
 
   @param   AValue         HTML color string, such as '#FF0000'
   @return  rgb color value in little endian byte-sequence. This value is
            compatible with the TColor data type of the graphics unit.
 -------------------------------------------------------------------------------}
-function HTMLColorStrToColor(AValue: String): TsColorValue;
+function HTMLColorStrToColor(AValue: String): TsColor;
 begin
   if AValue = '' then
     Result := scNotDefined
@@ -2022,13 +2072,11 @@ end;
                            i.e. in AARRGGBB notation, like '00FF0000' for "red"
   @return  HTML-compatible string, like '#FF0000' (AExcelDialect = false)
 -------------------------------------------------------------------------------}
-function ColorToHTMLColorStr(AValue: TsColorValue; AExcelDialect: Boolean = false): String;
-type
-  TRGB = record r,g,b,a: Byte end;
+function ColorToHTMLColorStr(AValue: TsColor;
+  AExcelDialect: Boolean = false): String;
 var
-  rgb: TRGB;
+  rgb: TRGBA absolute AValue;
 begin
-  rgb := TRGB(AValue);
   if AExcelDialect then
     Result := Format('00%.2x%.2x%.2x', [rgb.r, rgb.g, rgb.b])
   else
@@ -3070,6 +3118,23 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Constructs a TsColor from a palette index. It has bit 15 in the high-order
+  byte set.
+-------------------------------------------------------------------------------}
+function SetAsPaletteIndex(AIndex: Integer): TsColor;
+begin
+  Result := (DWord(AIndex) and scRGBMask) or scPaletteIndexMask;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the specified TsColor represents a palette index
+-------------------------------------------------------------------------------}
+function IsPaletteIndex(AColor: TsColor): Boolean;
+begin
+  Result := AColor and scPaletteIndexMask = scPaletteIndexMask;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Excel defines theme colors and applies a "tint" factor (-1...+1) to darken
   or brighten them.
 
@@ -3082,7 +3147,7 @@ end;
   @param   tint     Factor (-1...+1) to be used for the operation
   @return  Modified color
 -------------------------------------------------------------------------------}
-function TintedColor(AColor: TsColorValue; tint: Double): TsColorValue;
+function TintedColor(AColor: TsColor; tint: Double): TsColor;
 const
   HLSMAX = 255;
 var
@@ -3090,7 +3155,7 @@ var
   h, l, s: Byte;
   lum: Double;
 begin
-  if tint = 0 then begin
+  if (tint = 0) or (TRGBA(AColor).a <> 0) then begin
     Result := AColor;
     exit;
   end;
@@ -3119,17 +3184,41 @@ end;
   Returns the color index for black or white depending on a color being "bright"
   or "dark".
 
-  @param   AColorValue    rgb color to be analyzed
+  @param   AColor      rgb color to be analyzed
   @return  The color index for black (scBlack) if AColorValue is a "bright" color,
            or white (scWhite) if AColorValue is a "dark" color.
 -------------------------------------------------------------------------------}
-function HighContrastColor(AColorValue: TsColorvalue): TsColor;
+function HighContrastColor(AColor: TsColor): TsColor;
 begin
-  if TRGBA(AColorValue).r + TRGBA(AColorValue).g + TRGBA(AColorValue).b < 3*128 then
+  if TRGBA(AColor).r + TRGBA(AColor).g + TRGBA(AColor).b < 3*128 then
     Result := scWhite
   else
     Result := scBlack;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts the RGB part of a LongRGB logical structure to its physical representation.
+  In other words: RGBA (where A is 0 and omitted in the function call) => ABGR
+  Needed for conversion of palette colors.
+
+  @param  RGB   DWord value containing RGBA bytes in big endian byte-order
+  @return       DWord containing RGB bytes in little-endian byte-order (A = 0)
+-------------------------------------------------------------------------------}
+function LongRGBToExcelPhysical(const RGB: DWord): DWord;
+begin
+  {$IFDEF FPC}
+  {$IFDEF ENDIAN_LITTLE}
+  result := RGB shl 8; //tags $00 at end for the A byte
+  result := SwapEndian(result); //flip byte order
+  {$ELSE}
+  //Big endian
+  result := RGB; //leave value as is //todo: verify if this turns out ok
+  {$ENDIF}
+  {$ELSE}
+  // messed up result
+  {$ENDIF}
+end;
+
 
 {$PUSH}{$HINTS OFF}
 {@@ Silence warnings due to an unused parameter }

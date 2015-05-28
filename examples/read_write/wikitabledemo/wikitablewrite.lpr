@@ -135,8 +135,8 @@ begin
 
   MyWorksheet.WriteNumber(row, 0, row);
   MyWorksheet.WriteUTF8Text(row, 1, 'RGB background color:');
-  MyWorksheet.WriteUTF8Text(row, 2, 'color #FF77C3');
-  MyWorksheet.WriteBackgroundColor(row, 2, MyWorkbook.AddColorToPalette($C377FF));
+  MyWorksheet.WriteUTF8Text(row, 2, 'color #FF77C3');  // HTML colors are big-endian
+  MyWorksheet.WriteBackgroundColor(row, 2, $C377FF);   // fps colors are little-endian
   inc(row);
 
   MyWorksheet.WriteNumber(row, 0, row);

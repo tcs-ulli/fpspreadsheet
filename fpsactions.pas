@@ -1078,14 +1078,14 @@ procedure TsActionBorder.ApplyStyle(AWorkbook: TsWorkbook;
   out ABorderStyle: TsCellBorderStyle);
 begin
   ABorderStyle.LineStyle := FLineStyle;
-  ABorderStyle.Color := AWorkbook.GetPaletteColor(ABorderStyle.Color);
+  ABorderStyle.Color := ABorderStyle.Color and $00FFFFFF;
 end;
 
 procedure TsActionBorder.ExtractStyle(AWorkbook: TsWorkbook;
   ABorderStyle: TsCellBorderStyle);
 begin
   FLineStyle := ABorderStyle.LineStyle;
-  Color := AWorkbook.AddColorToPalette(ABorderStyle.Color);
+  Color := ColorToRGB(ABorderStyle.Color);
 end;
 
 constructor TsActionBorders.Create;
@@ -1575,14 +1575,14 @@ end;
 
 procedure TsBackgroundColorDialogAction.DoAccept;
 begin
-  FBackgroundColor := Workbook.AddColorToPalette(TsColorValue(Dialog.Color));
+  FBackgroundColor := ColorToRgb(Dialog.Color);
   inherited;
 end;
 
 procedure TsBackgroundColorDialogAction.DoBeforeExecute;
 begin
   inherited;
-  Dialog.Color := Workbook.GetPaletteColor(FBackgroundColor);
+  Dialog.Color := FBackgroundColor and $00FFFFFF;
 end;
 
 procedure TsBackgroundColorDialogAction.ExtractFromCell(ACell: PCell);

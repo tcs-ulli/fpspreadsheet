@@ -264,92 +264,147 @@ type
   {@@ Indicates vertical text alignment in cells }
   TsVertAlignment = (vaDefault, vaTop, vaCenter, vaBottom);
 
-  {@@
-    Colors in fpspreadsheet are given as indices into a palette.
-    Use the workbook's GetPaletteColor to determine the color rgb value as
-    little-endian (with "r" being the low-value byte, in agreement with TColor).
-    The data type for rgb values is TsColorValue. }
-  TsColor = Word;
+  {@@ Colors in fpspreadsheet are given as rgb values in little-endian notation
+    (i.e. "r" is the low-value byte). The highest-value byte, if not zero,
+    indicates special colors. }
+  TsColor = DWord;
 
-{@@
-  These are some constants for color indices into the default palette.
-  Note, however, that if a different palette is used there may be more colors,
-  and the names of the color constants may no longer be correct.
-}
 const
-  {@@ Index of <b>black</b> color in the standard color palettes }
-  scBlack = $00;
-  {@@ Index of <b>white</b> color in the standard color palettes }
-  scWhite = $01;
-  {@@ Index of <b>red</b> color in the standard color palettes }
-  scRed = $02;
-  {@@ Index of <b>green</b> color in the standard color palettes }
-  scGreen = $03;
-  {@@ Index of <b>blue</b> color in the standard color palettes }
-  scBlue = $04;
-  {@@ Index of <b>yellow</b> color in the standard color palettes }
-  scYellow = $05;
-  {@@ Index of <b>magenta</b> color in the standard color palettes }
-  scMagenta = $06;
-  {@@ Index of <b>cyan</b> color in the standard color palettes }
-  scCyan = $07;
-  {@@ Index of <b>dark red</b> color in the standard color palettes }
-  scDarkRed = $08;
-  {@@ Index of <b>dark green</b> color in the standard color palettes }
-  scDarkGreen = $09;
-  {@@ Index of <b>dark blue</b> color in the standard color palettes }
-  scDarkBlue = $0A;
-  {@@ Index of <b>"navy"</b> color (dark blue) in the standard color palettes }
-  scNavy = $0A;
-  {@@ Index of <b>olive</b> color in the standard color palettes }
-  scOlive = $0B;
-  {@@ Index of <b>purple</b> color in the standard color palettes }
-  scPurple = $0C;
-  {@@ Index of <b>teal</b> color in the standard color palettes }
-  scTeal = $0D;
-  {@@ Index of <b>silver</b> color in the standard color palettes }
-  scSilver = $0E;
-  {@@ Index of <b>grey</b> color in the standard color palettes }
-  scGrey = $0F;
-  {@@ Index of <b>gray</b> color in the standard color palettes }
-  scGray = $0F;       // redefine to allow different spelling
-  {@@ Index of a <b>10% grey</b> color in the standard color palettes }
-  scGrey10pct = $10;
-  {@@ Index of a <b>10% gray</b> color in the standard color palettes }
-  scGray10pct = $10;
-  {@@ Index of a <b>20% grey</b> color in the standard color palettes }
-  scGrey20pct = $11;
-  {@@ Index of a <b>20% gray</b> color in the standard color palettes }
-  scGray20pct = $11;
-  {@@ Index of <b>orange</b> color in the standard color palettes }
-  scOrange = $12;
-  {@@ Index of <b>dark brown</b> color in the standard color palettes }
-  scDarkbrown = $13;
-  {@@ Index of <b>brown</b> color in the standard color palettes }
-  scBrown = $14;
-  {@@ Index of <b>beige</b> color in the standard color palettes }
-  scBeige = $15;
-  {@@ Index of <b>"wheat"</b> color (yellow-orange) in the standard color palettes }
-  scWheat = $16;
+  {@@ These are some important rgb color volues.
+  }
+  {@@ rgb value of <b>black</b> color, BIFF2 palette index 0, BIFF8 index 8}
+  scBlack = $00000000;
+  {@@ rgb value of <b>white</b> color, BIFF2 palette index 1, BIFF8 index 9 }
+  scWhite = $00FFFFFF;
+  {@@ rgb value of <b>red</b> color, BIFF2 palette index 2, BIFF8 index 10 }
+  scRed = $000000FF;
+  {@@ rgb value of <b>green</b> color, BIFF2 palette index 3, BIFF8 index 11 }
+  scGreen = $0000FF00;
+  {@@ rgb value of <b>blue</b> color, BIFF2 palette index 4, BIFF8 indexes 12 and 39}
+  scBlue = $00FF0000;
+  {@@ rgb value of <b>yellow</b> color, BIFF2 palette index 5, BIFF8 indexes 13 and 34}
+  scYellow = $0000FFFF;
+  {@@ rgb value of <b>magenta</b> color, BIFF2 palette index 6, BIFF8 index 14 and 33}
+  scMagenta = $00FF00FF;
+  scPink = $00FE00FE;
+  {@@ rgb value of <b>cyan</b> color, BIFF2 palette index 7, BIFF8 indexes 15}
+  scCyan = $00FFFF00;
+  scTurquoise = scCyan;
+  {@@ rgb value of <b>dark red</b> color, BIFF8 indexes 16 and 35}
+  scDarkRed = $00000080;
+  {@@ rgb value of <b>dark green</b> color, BIFF8 index 17 }
+  scDarkGreen = $00008000;
+  {@@ rgb value of <b>dark blue</b> color }
+  scDarkBlue = $008B0000;
+  {@@ rgb value of <b>"navy"</b> color, BIFF8 palette indexes 18 and 32 }
+  scNavy = $00800000;
+  {@@ rgb value of <b>olive</b> color }
+  scOlive = $00008080;
+  {@@ rgb value of <b>purple</b> color, BIFF8 palette indexes 20 and 36 }
+  scPurple = $00800080;
+  {@@ rgb value of <b>teal</b> color, BIFF8 palette index 21 and 38 }
+  scTeal = $00808000;
+  {@@ rgb value of <b>silver</b> color }
+  scSilver = $00C0C0C0;
+  scGray25pct = scSilver;
+  {@@ rgb value of <b>grey</b> color }
+  scGray = $00808080;
+  {@@ rgb value of <b>gray</b> color }
+  scGrey = scGray;       // redefine to allow different spelling
+  scGray50pct = scGray;
+  {@@ rgb value of a <b>10% grey</b> color }
+  scGray10pct = $00E6E6E6;
+  {@@ rgb value of a <b>10% gray</b> color }
+  scGrey10pct = scGray10pct;
+  {@@ rgb value of a <b>20% grey</b> color }
+  scGray20pct = $00CCCCCC;
+  {@@ rgb value of a <b>20% gray</b> color }
+  scGrey20pct = scGray20pct;
+  {@@ rgb value of <b>periwinkle</b> color, BIFF8 palette index 24 }
+  scPeriwinkle = $00FF9999;
+  {@@ rgb value of <b>plum</b> color, BIFF8 palette indexes 25 and 61 }
+  scPlum = $00663399;
+  {@@ rgb value of <b>ivory</b> color, BIFF8 palette index 26 }
+  scIvory = $00CCFFFF;
+  {@@ rgb value of <b>light turquoise</b> color, BIFF8 palette indexes 27 and 41 }
+  scLightTurquoise = $00FFFFCC;
+  {@@ rgb value of <b>dark purple</b> color, BIFF8 palette index 28 }
+  scDarkPurple = $00660066;
+  {@@ rgb value of <b>coral</b> color, BIFF8 palette index 29 }
+  scCoral = $008080FF;
+  {@@ rgb value of <b>ocean blue</b> color, BIFF8 palette index 30 }
+  scOceanBlue = $00CC6600;
+  {@@ rgb value of <b>ice blue</b> color, BIFF8 palette index 31 }
+  scIceBlue = $00FFCCCC;
+  {@@ rgb value of <b>sky blue </b>color, BIFF8 palette index 40 }
+  scSkyBlue = $00FFCC00;
+  {@@ rgb value of <b>light green</b> color, BIFF8 palette index 42 }
+  scLightGreen = $00CCFFCC;
+  {@@ rgb value of <b>light yellow</b> color, BIFF8 palette index 43 }
+  scLightYellow = $0099FFFF;
+  {@@ rgb value of <b>pale blue</b> color, BIFF8 palette index 44 }
+  scPaleBlue = $00FFCC99;
+  {@@ rgb value of <b>rose</b> color, BIFF8 palette index 45 }
+  scRose = $00CC99FF;
+  {@@ rgb value of <b>lavander</b> color, BIFF8 palette index 46 }
+  scLavander = $00FF99CC;
+  {@@ rgb value of <b>tan</b> color, BIFF8 palette index 47 }
+  scTan = $0099CCFF;
+  {@@ rgb value of <b>light blue</b> color, BIFF8 palette index 48 }
+  scLightBlue = $00FF6633;
+  {@@ rgb value of <b>aqua</b> color, BIFF8 palette index 49 }
+  scAqua = $00CCCC33;
+  {@@ rgb value of <b>lime</b> color, BIFF8 palette index 50 }
+  scLime = $0000CC99;
+  {@@ rgb value of <b>golden</b> color, BIFF8 palette index 51 }
+  scGold = $0000CCFF;
+  {@@ rgb value of <b>light orange</b> color, BIFF8 palette index 52 }
+  scLightOrange = $000099FF;
+  {@@ rgb value of <b>orange</b> color, BIFF8 palette index 53 }
+  scOrange = $000066FF;
+  {@@ rgb value of <b>blue gray</b>, BIFF8 palette index 54 }
+  scBlueGray = $00996666;
+  scBlueGrey = scBlueGray;
+  {@@ rgb value of <b>gray 40%</b>, BIFF8 palette index 55 }
+  scGray40pct = $00969696;
+  {@@ rgb value of <b>dark teal</b>, BIFF8 palette index 56 }
+  scDarkTeal = $00663300;
+  {@@ rgb value of <b>sea green</b>, BIFF8 palette index 57 }
+  scSeaGreen = $00669933;
+  {@@ rgb value of <b>very dark green</b>, BIFF8 palette index 58 }
+  scVeryDarkGreen = $00003300;
+  {@@ rgb value of <b>olive green</b> color, BIFF8 palette index 59 }
+  scOliveGreen = $00003333;
+  {@@ rgb value of <b>brown</b> color, BIFF8 palette index 60 }
+  scBrown = $00003399;
+  {@@ rgb value of <b>indigo</b> color, BIFF8 palette index 62 }
+  scIndigo = $00993333;
+  {@@ rgb value of <b>80% gray</b>, BIFF8 palette index 63 }
+  scGray80pct = $00333333;
+  scGrey80pct = scGray80pct;
 
-  // not sure - but I think the mechanism with scRGBColor is not working...
-  // Will be removed sooner or later...
-  scRGBColor = $FFFD;
+//  {@@ rgb value of <b>orange</b> color }
+//  scOrange = $0000A5FF;
+  {@@ rgb value of <b>dark brown</b> color }
+  scDarkBrown = $002D52A0;
 
-  {@@ Identifier for transparent color }
-  scTransparent = $FFFE;
+//  {@@ rgb value of <b>brown</b> color }
+//  scBrown = $003F85CD;
+  {@@ rgb value of <b>beige</b> color }
+  scBeige = $00DCF5F5;
+  {@@ rgb value of <b>"wheat"</b> color (yellow-orange) }
+  scWheat = $00B3DEF5;
+
   {@@ Identifier for not-defined color }
-  scNotDefined = $FFFF;
+  scNotDefined = $40000000;
+  {@@ Identifier for transparent color }
+  scTransparent = $20000000;
+  {@@ Identifier for palette index encoded into the TsColor }
+  scPaletteIndexMask = $80000000;
+  {@@ Mask for the rgb components contained in the TsColor }
+  scRGBMask = $00FFFFFF;
 
 type
-  {@@ Data type for rgb color values }
-  TsColorValue = DWord;
-
-  {@@ Palette of color values. A "color value" is a DWord value containing
-      rgb colors. }
-  TsPalette = array[0..0] of TsColorValue;
-  PsPalette = ^TsPalette;
-
   {@@ Font style (redefined to avoid usage of "Graphics" }
   TsFontStyle = (fssBold, fssItalic, fssStrikeOut, fssUnderline);
 
@@ -365,7 +420,7 @@ type
     Size: Single;   // in "points"
     {@@ Font style, such as bold, italics etc. - see TsFontStyle}
     Style: TsFontStyles;
-    {@@ Text color given by the index into the workbook's color palette }
+    {@@ Text color given as rgb value }
     Color: TsColor;
   end;
 

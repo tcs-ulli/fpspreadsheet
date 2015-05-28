@@ -270,7 +270,8 @@ begin
             if copy(lFormatstr, 1, 6) = 'color:' then
             begin
               lColorstr := Copy(lFormatstr, 7, Length(lFormatStr));
-              lCurBackgroundColor := FWorkbook.AddColorToPalette(HTMLColorStrToColor(lColorStr));
+              lCurBackgroundColor := HTMLColorStrToColor(lColorStr);
+//              lCurBackgroundColor := FWorkbook.AddColorToPalette(HTMLColorStrToColor(lColorStr));
               lUseBackgroundColor := True;
               lFormatStr := '';
             end;
@@ -381,7 +382,8 @@ procedure TsWikiTableWriter.WriteToStrings_WikiMedia(AStrings: TStrings);
     clr := fmt^.BorderStyles[ABorder].Color;
     Result := Format('border-%s:%s', [BORDERNAMES[ABorder], LINESTYLES[ls]]);
     if clr <> scBlack then
-      Result := Result + ' ' + FWorkbook.GetPaletteColorAsHTMLStr(clr) + '; ';
+      Result := Result + ' ' + ColorToHTMLColorStr(clr) + '; ';
+//      Result := Result + ' ' + FWorkbook.GetPaletteColorAsHTMLStr(clr) + '; ';
   end;
 
 const
@@ -499,8 +501,10 @@ begin
       begin
         lCurColor := FWorksheet.ReadBackgroundColor(lCell);
         lStyleStr := Format('background-color:%s;color:%s;', [
-          FWorkbook.GetPaletteColorAsHTMLStr(lCurColor),
-          FWorkbook.GetPaletteColorAsHTMLStr(lFont.Color)
+          ColorToHTMLColorStr(lCurColor),
+          ColorToHTMLColorStr(lFont.Color)
+//          FWorkbook.GetPaletteColorAsHTMLStr(lCurColor),
+//          FWorkbook.GetPaletteColorAsHTMLStr(lFont.Color)
         ]);
       end;
 

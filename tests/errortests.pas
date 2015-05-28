@@ -35,7 +35,7 @@ type
 implementation
 
 uses
-  StrUtils, fpsRPN, xlsbiff5;
+  StrUtils, fpsPalette, fpsRPN, xlsbiff5;
 
 const
   ERROR_SHEET = 'ErrorTest'; //worksheet name
@@ -67,6 +67,8 @@ var
   ErrList: TStringList;
   newColor: TsColor;
   expected: integer;
+  palette: TsPalette;
+  i: Integer;
 begin
   formula := '=A1';
 
@@ -122,25 +124,44 @@ begin
     MyWorkbook := TsWorkbook.Create;
     try
       // Prepare a full palette
-      MyWorkbook.UsePalette(@PALETTE_BIFF5[0], Length(PALETTE_BIFF5));
-      // Add 1 more color - this is one too many for BIFF5 and 8, and a lot
-      // too many for BIFF2 !
-      newColor := MyWorkbook.AddColorToPalette($FF7878);
+      palette := TsPalette.Create;
+      try
+        // Create random palette of 65 unique entries - 1 too many for Excel5/8
+        // and a lot too many for BIFF2
+        palette.AddBuiltinColors;
+        for i:=8 to 65 do
+        begin
+          repeat
+            newColor := random(256) + random(256) shl 8 + random(256) shl 16;
+          until palette.FindColor(newColor) = -1;
+          palette.AddColor(newColor);
+        end;
 
-      MyWorkSheet:= MyWorkBook.AddWorksheet(ERROR_SHEET);
-      MyWorksheet.WriteUTF8Text(0, 0, s);
-      MyWorksheet.WriteFontColor(0, 0, newColor);
+        MyWorkSheet:= MyWorkBook.AddWorksheet(ERROR_SHEET);
 
-      TempFile:=NewTempFile;
-      MyWorkBook.WriteToFile(TempFile, AFormat, true);
-      ErrList.Text := MyWorkbook.ErrorMsg;
-      // Palette usage in biff --> expecting error due to too large palette
-      if (TTestFormat(AFormat) in [sfExcel2, sfExcel5, sfExcel8]) then
-        expected := 1
-      else
-        // no palette in xml --> no error expected
-        expected := 0;
-      CheckEquals(expected, ErrList.Count, 'Error count mismatch in test 3');
+        // Use all colors in order to have them in the palette to be written
+        // to file.
+        for row := 0 to palette.Count-1 do
+        begin
+          MyWorksheet.WriteUTF8Text(row, 0, s);
+          MyWorksheet.WriteFontColor(row, 0, palette[row]);
+        end;
+
+        TempFile:=NewTempFile;
+        MyWorkBook.WriteToFile(TempFile, AFormat, true);
+        ErrList.Text := MyWorkbook.ErrorMsg;
+        // Palette usage in biff --> expecting error due to too large palette
+        if (TTestFormat(AFormat) in [sfExcel2, sfExcel5, sfExcel8]) then
+          expected := 1
+        else
+          // no palette in xml --> no error expected
+          expected := 0;
+        CheckEquals(expected, ErrList.Count, 'Error count mismatch in test 3');
+
+      finally
+        palette.Free;
+      end;
+
     finally
       MyWorkbook.Free;
       DeleteFile(TempFile);

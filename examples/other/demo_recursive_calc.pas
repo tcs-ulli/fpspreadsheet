@@ -49,7 +49,7 @@ begin
     writeln('Finished.');
     writeln;
     writeln('Please open "'+OutputFile+'" in "fpsgrid".');
-    writeLn('It should show calculation results in cells B1 and B2.');
+    writeLn('It must show correct calculation results in cells B1 and B2.');
   finally
     workbook.Free;
   end;

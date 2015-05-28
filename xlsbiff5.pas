@@ -77,6 +77,7 @@ type
     FWorksheetNames: TStringList;
     FCurrentWorksheet: Integer;
   protected
+    procedure PopulatePalette; override;
     { Record writing methods }
     procedure ReadBoundsheet(AStream: TStream);
     procedure ReadFONT(const AStream: TStream);
@@ -137,7 +138,7 @@ var
 
 var
   // the palette of the default BIFF5 colors as "big-endian color" values
-  PALETTE_BIFF5: array[$00..$3F] of TsColorValue = (
+  PALETTE_BIFF5: array[$00..$3F] of TsColor = (
     $000000,  // $00: black
     $FFFFFF,  // $01: white
     $FF0000,  // $02: red
@@ -213,7 +214,7 @@ var
 implementation
 
 uses
-  fpsStrings, fpsStreams, fpsReaderWriter;
+  Math, fpsStrings, fpsStreams, fpsReaderWriter, fpsPalette;
 
 const
    { Excel record IDs }
@@ -337,6 +338,15 @@ type
 
 { TsSpreadBIFF5Reader }
 
+{@@ ----------------------------------------------------------------------------
+  Populates the reader's default palette using the BIFF5 default colors.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF5Reader.PopulatePalette;
+begin
+  FPalette.Clear;
+  FPalette.UseColors(PALETTE_BIFF5);
+end;
+
 procedure TsSpreadBIFF5Reader.ReadWorkbookGlobals(AStream: TStream);
 var
   SectionEOF: Boolean = False;
@@ -352,14 +362,14 @@ begin
     CurStreamPos := AStream.Position;
 
     case RecordType of
-     INT_EXCEL_ID_BOF        : ;
-     INT_EXCEL_ID_BOUNDSHEET : ReadBoundSheet(AStream);
-     INT_EXCEL_ID_CODEPAGE   : ReadCodePage(AStream);
-     INT_EXCEL_ID_FONT       : ReadFont(AStream);
-     INT_EXCEL_ID_FORMAT     : ReadFormat(AStream);
-     INT_EXCEL_ID_XF         : ReadXF(AStream);
-     INT_EXCEL_ID_PALETTE    : ReadPalette(AStream);
-     INT_EXCEL_ID_EOF        : SectionEOF := True;
+      INT_EXCEL_ID_BOF        : ;
+      INT_EXCEL_ID_BOUNDSHEET : ReadBoundSheet(AStream);
+      INT_EXCEL_ID_CODEPAGE   : ReadCodePage(AStream);
+      INT_EXCEL_ID_FONT       : ReadFont(AStream);
+      INT_EXCEL_ID_FORMAT     : ReadFormat(AStream);
+      INT_EXCEL_ID_XF         : ReadXF(AStream);
+      INT_EXCEL_ID_PALETTE    : ReadPalette(AStream);
+      INT_EXCEL_ID_EOF        : SectionEOF := True;
     else
       // nothing
     end;
@@ -370,6 +380,9 @@ begin
     // Check for the end of the file
     if AStream.Position >= AStream.Size then SectionEOF := True;
   end;
+
+  // Convert palette indexes to rgb colors
+  FixColors;
 end;
 
 procedure TsSpreadBIFF5Reader.ReadWorksheet(AStream: TStream);
@@ -606,8 +619,7 @@ procedure TsSpreadBIFF5Reader.ReadXF(AStream: TStream);
 var
   rec: TBIFF5_XFRecord;
   fmt: TsCellFormat;
-//  nfidx: Integer;
-  i: Integer;
+  i, cidx: Integer;
   nfparams: TsNumFormatParams;
   nfs: String;
   b: Byte;
@@ -646,28 +658,7 @@ begin
       Include(fmt.UsedFormattingFields, uffNumberFormat);
     end;
   end;
-{
-  // Number format index
-  nfparams := Workbook.GetNumberFormat(rec.NumFormatIndex);
-  nfs := nfParams.NumFormatStr[nfdDefault];
-  if nfs <> '' then begin
-    fmt.NumberFormatIndex := Workbook.AddNumberFormat(nfs);
-    fmt.NumberFormat := nfParams.NumFormat;
-    fmt.NumberFormatStr := nfs;
-    Include(fmt.UsedFormattingFields, uffNumberFormat);
-  end;
- }
- {
-  nfidx := WordLEToN(rec.NumFormatIndex);
-  i := NumFormatList.FindByIndex(nfidx);
-  if i > -1 then begin
-    nfdata := NumFormatList.Items[i];
-    fmt.NumberFormat := nfdata.NumFormat;
-    fmt.NumberFormatStr := nfdata.FormatString;
-    if nfdata.NumFormat <> nfGeneral then
-      Include(fmt.UsedFormattingFields, uffNumberFormat);
-  end;
-       }
+
   // Horizontal text alignment
   b := rec.Align_TextBreak AND MASK_XF_HOR_ALIGN;
   if (b <= ord(High(TsHorAlignment))) then
@@ -742,10 +733,17 @@ begin
   end;
 
   // Border line colors
-  fmt.BorderStyles[cbWest].Color := (rec.Border_BkGr2 and MASK_XF_BORDER_LEFT_COLOR) shr 16;
-  fmt.BorderStyles[cbEast].Color := (rec.Border_BkGr2 and MASK_XF_BORDER_RIGHT_COLOR) shr 23;
-  fmt.BorderStyles[cbNorth].Color := (rec.Border_BkGr2 and MASK_XF_BORDER_TOP_COLOR) shr 9;
-  fmt.BorderStyles[cbSouth].Color := (rec.Border_BkGr1 and MASK_XF_BORDER_BOTTOM_COLOR) shr 25;
+  // NOTE: It is possible that the palette is not yet known at this moment.
+  // Therefore we store the palette index encoded into the colors.
+  // They will be converted to rgb in "FixColors".
+  cidx := (rec.Border_BkGr2 and MASK_XF_BORDER_LEFT_COLOR) shr 16;
+  fmt.BorderStyles[cbWest].Color := IfThen(cidx >= 64, scBlack, SetAsPaletteIndex(cidx));
+  cidx := (rec.Border_BkGr2 and MASK_XF_BORDER_RIGHT_COLOR) shr 23;
+  fmt.BorderStyles[cbEast].Color := IfThen(cidx >= 64, scBlack, SetAsPaletteIndex(cidx));
+  cidx := (rec.Border_BkGr2 and MASK_XF_BORDER_TOP_COLOR) shr 9;
+  fmt.BorderStyles[cbNorth].Color := IfThen(cidx >= 64, scBlack, SetAsPaletteIndex(cidx));
+  cidx := (rec.Border_BkGr1 and MASK_XF_BORDER_BOTTOM_COLOR) shr 25;
+  fmt.BorderStyles[cbSouth].Color := IfThen(cidx >= 64, scBlack, SetAsPaletteIndex(cidx));
 
   // Background
   fill := (rec.Border_BkGr1 and MASK_XF_BKGR_FILLPATTERN) shr 16;
@@ -758,12 +756,12 @@ begin
       // Fill style
       fmt.Background.Style := fs;
       // Pattern color
-      fmt.Background.FgColor := rec.Border_BkGr1 and MASK_XF_BKGR_PATTERN_COLOR;
-      if fmt.Background.FgColor = SYS_DEFAULT_FOREGROUND_COLOR then
-        fmt.Background.FgColor := scBlack;
-      fmt.Background.BgColor := (rec.Border_BkGr1 and MASK_XF_BKGR_BACKGROUND_COLOR) shr 7;
-      if fmt.Background.BgColor = SYS_DEFAULT_BACKGROUND_COLOR then
-        fmt.Background.BgColor := scTransparent;
+      cidx := rec.Border_BkGr1 and MASK_XF_BKGR_PATTERN_COLOR;  // Palette index
+      fmt.Background.FgColor := IfThen(cidx = SYS_DEFAULT_FOREGROUND_COLOR,
+        scBlack, SetAsPaletteIndex(cidx));
+      cidx := (rec.Border_BkGr1 and MASK_XF_BKGR_BACKGROUND_COLOR) shr 7;
+      fmt.Background.BgColor := IfThen(cidx = SYS_DEFAULT_BACKGROUND_COLOR,
+        scTransparent, SetAsPaletteIndex(cidx));
       Include(fmt.UsedFormattingFields, uffBackground);
       break;
     end;
@@ -785,14 +783,12 @@ begin
   BIFF5EOF := False;
 
   { Read workbook globals }
-
   ReadWorkbookGlobals(AStream);
 
-  // Check for the end of the file
+  { Check for the end of the file }
   if AStream.Position >= AStream.Size then BIFF5EOF := True;
 
   { Now read all worksheets }
-
   while (not BIFF5EOF) do
   begin
     ReadWorksheet(AStream);
@@ -807,11 +803,7 @@ begin
     // at the end of the file.
   end;
 
-  if not FPaletteFound then
-    FWorkbook.UsePalette(@PALETTE_BIFF5, Length(PALETTE_BIFF5));
-
-  { Finalizations }
-
+  { Finalization }
   FWorksheetNames.Free;
 end;
 
@@ -840,10 +832,21 @@ begin
   if lOptions and $0004 <> 0 then Include(font.Style, fssUnderline);
   if lOptions and $0008 <> 0 then Include(font.Style, fssStrikeout);
 
-  { Colour index }
+  { Color index }
+  // The problem is that the palette is loaded after the font list; therefore
+  // we do not know the rgb color of the font here. We store the palette index
+  // ("SetAsPaletteIndex") and replace it by the rgb color at the end of the
+  // workbook globals records. As an indicator that the font does not yet
+  // contain an rgb color a control bit is set in the high-byte of the TsColor.
   lColor := WordLEToN(AStream.ReadWord);
-  //font.Color := TsColor(lColor - 8);  // Palette colors have an offset 8
-  font.Color := tsColor(lColor);
+  if lColor < 8 then
+    // Use built-in colors directly otherwise the Workbook's FindFont would not find the font in ReadXF
+    font.Color := FPalette[lColor]
+  else
+  if lColor = SYS_DEFAULT_WINDOW_TEXT_COLOR then
+    font.Color := scBlack
+  else
+    font.Color := SetAsPaletteIndex(lColor);
 
   { Font weight }
   lWeight := WordLEToN(AStream.ReadWord);
@@ -1197,6 +1200,7 @@ procedure TsSpreadBIFF5Writer.WriteFont(AStream: TStream; AFont: TsFont);
 var
   Len: Byte;
   optn: Word;
+  cidx: Integer;
 begin
   if AFont = nil then  // this happens for FONT4 in case of BIFF
     exit;
@@ -1222,8 +1226,8 @@ begin
   if fssStrikeout in AFont.Style then optn := optn or $0008;
   AStream.WriteWord(WordToLE(optn));
 
-  { Colour index }
-  AStream.WriteWord(WordToLE(ord(FixColor(AFont.Color))));
+  { Color index }
+  AStream.WriteWord(WordToLE(PaletteIndex(AFont.Color)));
 
   { Font weight }
   if fssBold in AFont.Style then
@@ -1574,19 +1578,19 @@ begin
     begin
       if (AFormatRecord^.Background.FgColor = scTransparent)
         then dw1 := dw1 or (SYS_DEFAULT_FOREGROUND_COLOR and $0000007F)
-        else dw1 := dw1 or (FixColor(AFormatRecord^.Background.FgColor) and $0000007F);
+        else dw1 := dw1 or (PaletteIndex(AFormatRecord^.Background.FgColor) and $0000007F);
       if AFormatRecord^.Background.BgColor = scTransparent
         then dw1 := dw1 or (SYS_DEFAULT_BACKGROUND_COLOR shl 7)
-        else dw1 := dw1 or (FixColor(AFormatRecord^.Background.BgColor) shl 7);
+        else dw1 := dw1 or (PaletteIndex(AFormatRecord^.Background.BgColor) shl 7);
       dw1 := dw1 or (MASK_XF_FILL_PATT[AFormatRecord^.Background.Style] shl 16);
     end;
     // Border lines
     if (uffBorder in AFormatRecord^.UsedFormattingFields) then
     begin
-      dw1 := dw1 or (AFormatRecord^.BorderStyles[cbSouth].Color shl 25);      // Bottom line color
-      dw2 := (FixColor(AFormatRecord^.BorderStyles[cbNorth].Color) shl 9) or  // Top line color
-             (FixColor(AFormatRecord^.BorderStyles[cbWest].Color) shl 16) or  // Left line color
-             (FixColor(AFormatRecord^.BorderStyles[cbEast].Color) shl 23);    // Right line color
+      dw1 := dw1 or PaletteIndex(AFormatRecord^.BorderStyles[cbSouth].Color) shl 25; // Bottom line color
+      dw2 := (PaletteIndex(AFormatRecord^.BorderStyles[cbNorth].Color) shl 9) or     // Top line color
+             (PaletteIndex(AFormatRecord^.BorderStyles[cbWest].Color) shl 16) or     // Left line color
+             (PaletteIndex(AFormatRecord^.BorderStyles[cbEast].Color) shl 23);       // Right line color
       if cbSouth in AFormatRecord^.Border then
         dw1 := dw1 or ((DWord(AFormatRecord^.BorderStyles[cbSouth].LineStyle)+1) shl 22);
       if cbNorth in AFormatRecord^.Border then
@@ -1612,7 +1616,7 @@ initialization
  {$ENDIF}
 
   RegisterSpreadFormat(TsSpreadBIFF5Reader, TsSpreadBIFF5Writer, sfExcel5);
-  MakeLEPalette(@PALETTE_BIFF5, Length(PALETTE_BIFF5));
+  MakeLEPalette(PALETTE_BIFF5);
 
 end.
 

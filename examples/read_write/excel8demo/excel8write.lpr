@@ -36,7 +36,6 @@ begin
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
   MyWorkbook.SetDefaultFont('Calibri', 9);
-  MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
   MyWorkbook.FormatSettings.CurrencyFormat := 2;
   MyWorkbook.FormatSettings.NegCurrFormat := 14;
   MyWorkbook.Options := MyWorkbook.Options + [boCalcBeforeSaving];
