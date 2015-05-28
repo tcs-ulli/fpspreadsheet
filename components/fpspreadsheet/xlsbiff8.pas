@@ -84,6 +84,7 @@ type
     procedure ReadBoundsheet(AStream: TStream);
     function ReadString(const AStream: TStream; const ALength: WORD): String;
   protected
+    procedure PopulatePalette; override;
     procedure ReadCONTINUE(const AStream: TStream);
     procedure ReadFONT(const AStream: TStream);
     procedure ReadFORMAT(AStream: TStream); override;
@@ -181,7 +182,7 @@ var
 
 var
   // the palette of the 64 default BIFF8 colors as "big-endian color" values
-  PALETTE_BIFF8: array[$00..$3F] of TsColorValue = (
+  PALETTE_BIFF8: array[$00..$3F] of TsColor = (
     $000000,  // $00: black            // 8 built-in default colors
     $FFFFFF,  // $01: white
     $FF0000,  // $02: red
@@ -191,72 +192,73 @@ var
     $FF00FF,  // $06: magenta
     $00FFFF,  // $07: cyan
 
-    $000000,  // $08: EGA black
-    $FFFFFF,  // $09: EGA white
-    $FF0000,  // $0A: EGA red
-    $00FF00,  // $0B: EGA green
-    $0000FF,  // $0C: EGA blue
-    $FFFF00,  // $0D: EGA yellow
-    $FF00FF,  // $0E: EGA magenta
-    $00FFFF,  // $0F: EGA cyan
+    $000000,  // $08: EGA black                       1
+    $FFFFFF,  // $09: EGA white                       2
+    $FF0000,  // $0A: EGA red                         3
+    $00FF00,  // $0B: EGA green                       4
+    $0000FF,  // $0C: EGA blue                        5
+    $FFFF00,  // $0D: EGA yellow                      6
+    $FF00FF,  // $0E: EGA magenta                     7      pink
+    $00FFFF,  // $0F: EGA cyan                        8      turqoise
 
-    $800000,  // $10: EGA dark red
-    $008000,  // $11: EGA dark green
-    $000080,  // $12: EGA dark blue
-    $808000,  // $13: EGA olive
-    $800080,  // $14: EGA purple
-    $008080,  // $15: EGA teal
-    $C0C0C0,  // $16: EGA silver
-    $808080,  // $17: EGA gray
-    $9999FF,  // $18:
-    $993366,  // $19:
-    $FFFFCC,  // $1A:
-    $CCFFFF,  // $1B:
-    $660066,  // $1C:
-    $FF8080,  // $1D:
-    $0066CC,  // $1E:
-    $CCCCFF,  // $1F:
+    $800000,  // $10=16: EGA dark red                    9
+    $008000,  // $11=17: EGA dark green                 10
+    $000080,  // $12=18: EGA dark blue                  11
+    $808000,  // $13=19: EGA olive                      12      dark yellow
+    $800080,  // $14=20: EGA purple                     13      violet
+    $008080,  // $15=21: EGA teal                       14
+    $C0C0C0,  // $16=22: EGA silver                     15       gray 25%
+    $808080,  // $17=23: EGA gray                       16       gray 50%
+    $9999FF,  // $18=24: Periwinkle
+    $993366,  // $19=25: Plum
+    $FFFFCC,  // $1A=26: Ivory
+    $CCFFFF,  // $1B=27: Light turquoise
+    $660066,  // $1C=28: Dark purple
+    $FF8080,  // $1D=29: Coral
+    $0066CC,  // $1E=30: Ocean blue
+    $CCCCFF,  // $1F=31: Ice blue
 
-    $000080,  // $20:
-    $FF00FF,  // $21:
-    $FFFF00,  // $22:
-    $00FFFF,  // $23:
-    $800080,  // $24:
-    $800000,  // $25:
-    $008080,  // $26:
-    $0000FF,  // $27:
-    $00CCFF,  // $28:
-    $CCFFFF,  // $29:
-    $CCFFCC,  // $2A:
-    $FFFF99,  // $2B:
-    $99CCFF,  // $2C:
-    $FF99CC,  // $2D:
-    $CC99FF,  // $2E:
-    $FFCC99,  // $2F:
+    $000080,  // $20=32: Navy (repeated)
+    $FF00FF,  // $21=33: Pink (magenta repeated)
+    $FFFF00,  // $22=34: Yellow (repeated)
+    $00FFFF,  // $23=35: Turqoise (=cyan repeated)
+    $800080,  // $24=36: Purple (repeated)
+    $800000,  // $25=37: Dark red (repeated)
+    $008080,  // $26=38: Teal (repeated)
+    $0000FF,  // $27=39: Blue (repeated)
+    $00CCFF,  // $28=40: Sky blue
+    $CCFFFF,  // $29=41: Light turquoise (repeated)
+    $CCFFCC,  // $2A=42: Light green
+    $FFFF99,  // $2B=43: Light yellow
+    $99CCFF,  // $2C=44: Pale blue
+    $FF99CC,  // $2D=45: rose
+    $CC99FF,  // $2E=46: lavander
+    $FFCC99,  // $2F=47: tan
 
-    $3366FF,  // $30:
-    $33CCCC,  // $31:
-    $99CC00,  // $32:
-    $FFCC00,  // $33:
-    $FF9900,  // $34:
-    $FF6600,  // $35:
-    $666699,  // $36:
-    $969696,  // $37:
-    $003366,  // $38:
-    $339966,  // $39:
-    $003300,  // $3A:
-    $333300,  // $3B:
-    $993300,  // $3C:
-    $993366,  // $3D:
-    $333399,  // $3E:
-    $333333   // $3F:
+    $3366FF,  // $30=48: Light blue
+    $33CCCC,  // $31=49: Aqua
+    $99CC00,  // $32=50: Lime
+    $FFCC00,  // $33=51: Gold
+    $FF9900,  // $34=52: Light orange
+    $FF6600,  // $35=53: Orange
+    $666699,  // $36=54: Blue gray
+    $969696,  // $37=55: Gray 40%
+    $003366,  // $38=56: Dark teal
+    $339966,  // $39=57: Sea green
+    $003300,  // $3A=58: very dark green
+    $333300,  // $3B=59: olive green
+    $993300,  // $3C=60: brown
+    $993366,  // $3D=61: plum
+    $333399,  // $3E=62: indigo
+    $333333   // $3F=63: gray 80%
   );
+  // color names according to http://dmcritchie.mvps.org/EXCEL/COLORS.HTM
 
 implementation
 
 uses
   Math, lconvencoding, LazFileUtils, URIParser,
-  fpsStrings, fpsStreams, fpsReaderWriter, fpsExprParser, xlsEscher;
+  fpsStrings, fpsStreams, fpsReaderWriter, fpsPalette, fpsExprParser, xlsEscher;
 
 const
    { Excel record IDs }
@@ -429,10 +431,21 @@ begin
   inherited;
 end;
 
-{ Reads a CONTINUE record. If the Flag "FCommentPending" is active then this
+{@@ ----------------------------------------------------------------------------
+  Populates the reader's default palette using the BIFF8 default colors.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Reader.PopulatePalette;
+begin
+  FPalette.Clear;
+  FPalette.UseColors(PALETTE_BIFF8);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads a CONTINUE record. If the Flag "FCommentPending" is active then this
   record contains the text of a comment assigned to a cell. The length of the
   string is taken from the preceeding TXO record, and the ID of the comment is
-  extracted in another preceeding record, an OBJ record. }
+  extracted in another preceeding record, an OBJ record.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Reader.ReadCONTINUE(const AStream: TStream);
 var
   commentStr: String;
@@ -657,6 +670,9 @@ begin
     // Check for the end of the file
     if AStream.Position >= AStream.Size then SectionEOF := True;
   end;
+
+  // Convert palette indexes to rgb colors
+  FixColors;
 end;
 
 procedure TsSpreadBIFF8Reader.ReadWorksheet(AStream: TStream);
@@ -838,9 +854,6 @@ begin
     // It can happen in files written by Office97 that the OLE directory is
     // at the end of the file.
   end;
-
-  if not FPaletteFound then
-    FWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
 
   { Finalizations }
   FWorksheetNames.Free;
@@ -1206,6 +1219,7 @@ var
   nfs: String;
   nfParams: TsNumFormatParams;
   i: Integer;
+  iclr: Integer;
   fnt: TsFont;
 begin
   InitFormatRecord(fmt);
@@ -1326,29 +1340,39 @@ begin
   end;
 
   // Border line colors
-  fmt.BorderStyles[cbWest].Color := (rec.Border_BkGr1 and MASK_XF_BORDER_LEFT_COLOR) shr 16;
-  fmt.BorderStyles[cbEast].Color := (rec.Border_BkGr1 and MASK_XF_BORDER_RIGHT_COLOR) shr 23;
-  fmt.BorderStyles[cbNorth].Color := (rec.Border_BkGr2 and MASK_XF_BORDER_TOP_COLOR);
-  fmt.BorderStyles[cbSouth].Color := (rec.Border_BkGr2 and MASK_XF_BORDER_BOTTOM_COLOR) shr 7;
-  fmt.BorderStyles[cbDiagUp].Color := (rec.Border_BkGr2 and MASK_XF_BORDER_DIAGONAL_COLOR) shr 14;
+  // NOTE: It is possible that the palette is not yet known at this moment.
+  // Therefore we store the palette index encoded into the colorx.
+  // They will be converted to rgb in "FixColors".
+  iclr := (rec.Border_BkGr1 and MASK_XF_BORDER_LEFT_COLOR) shr 16;
+  fmt.BorderStyles[cbWest].Color := IfThen(iclr >= 64, scBlack, SetAsPaletteIndex(iclr));
+  iclr := (rec.Border_BkGr1 and MASK_XF_BORDER_RIGHT_COLOR) shr 23;
+  fmt.BorderStyles[cbEast].Color := IfThen(iclr >= 64, scBlack, SetAsPaletteIndex(iclr));
+  iclr := (rec.Border_BkGr2 and MASK_XF_BORDER_TOP_COLOR);
+  fmt.BorderStyles[cbNorth].Color := IfThen(iclr >= 64, scBlack, SetAsPaletteIndex(iclr));
+  iclr := (rec.Border_BkGr2 and MASK_XF_BORDER_BOTTOM_COLOR) shr 7;
+  fmt.BorderStyles[cbSouth].Color := IfThen(iclr >= 64, scBlack, SetAsPaletteIndex(iclr));
+  iclr := (rec.Border_BkGr2 and MASK_XF_BORDER_DIAGONAL_COLOR) shr 14;
+  fmt.BorderStyles[cbDiagUp].Color := IfThen(iclr >= 64, scBlack, SetAsPaletteIndex(iclr));
   fmt.BorderStyles[cbDiagDown].Color := fmt.BorderStyles[cbDiagUp].Color;
 
   // Background fill pattern and color
   fill := (rec.Border_BkGr2 and MASK_XF_BACKGROUND_PATTERN) shr 26;
   if fill <> MASK_XF_FILL_PATT_EMPTY then
   begin
+    rec.BkGr3 := DWordLEToN(rec.BkGr3);
     for fs in TsFillStyle do
       if fill = MASK_XF_FILL_PATT[fs] then
       begin
-        rec.BkGr3 := DWordLEToN(rec.BkGr3);
         // Pattern color
-        fmt.Background.FgColor := rec.BkGr3 and $007F;
-        if fmt.Background.FgColor = SYS_DEFAULT_FOREGROUND_COLOR then
-          fmt.Background.FgColor := scBlack;
+        iclr := rec.BkGr3 and $007F;
+        fmt.Background.FgColor := IfThen(iclr = SYS_DEFAULT_FOREGROUND_COLOR,
+          scBlack, SetAsPaletteIndex(iclr));
+
         // Background color
-        fmt.Background.BgColor := (rec.BkGr3 and $3F80) shr 7;
-        if fmt.Background.BgColor = SYS_DEFAULT_BACKGROUND_COLOR then
-          fmt.Background.BgColor := scTransparent;
+        iclr := (rec.BkGr3 and $3F80) shr 7;
+        fmt.Background.BgColor := IfThen(iclr = SYS_DEFAULT_BACKGROUND_COLOR,
+          scTransparent, SetAsPaletteIndex(iclr));
+
         // Fill style
         fmt.Background.Style := fs;
         Include(fmt.UsedFormattingFields, uffBackground);
@@ -1374,7 +1398,7 @@ begin
   font := TsFont.Create;
 
   { Height of the font in twips = 1/20 of a point }
-  lHeight := WordLEToN(AStream.ReadWord); // WordToLE(200)
+  lHeight := WordLEToN(AStream.ReadWord);
   font.Size := lHeight/20;
 
   { Option flags }
@@ -1385,10 +1409,21 @@ begin
   if lOptions and $0004 <> 0 then Include(font.Style, fssUnderline);
   if lOptions and $0008 <> 0 then Include(font.Style, fssStrikeout);
 
-  { Colour index }
+  { Color index }
+  // The problem is that the palette is loaded after the font list; therefore
+  // we do not know the rgb color of the font here. We store the palette index
+  // ("SetAsPaletteIndex") and replace it by the rgb color at the end of the
+  // workbook globals records. As an indicator that the font does not yet
+  // contain an rgb color a control bit is set in the high-byte of the TsColor.
   lColor := WordLEToN(AStream.ReadWord);
-  //font.Color := TsColor(lColor - 8);  // Palette colors have an offset 8
-  font.Color := tsColor(lColor);
+  if lColor < 8 then
+    // Use built-in colors directly otherwise the Workbook's FindFont would not find the font in ReadXF
+    font.Color := FPalette[lColor]
+  else
+  if lColor = SYS_DEFAULT_WINDOW_TEXT_COLOR then
+    font.Color := scBlack
+  else
+    font.Color := SetAsPaletteIndex(lColor);
 
   { Font weight }
   lWeight := WordLEToN(AStream.ReadWord);
@@ -1983,8 +2018,8 @@ begin
   if fssStrikeout in AFont.Style then optn := optn or $0008;
   AStream.WriteWord(WordToLE(optn));
 
-  { Colour index }
-  AStream.WriteWord(WordToLE(ord(FixColor(AFont.Color))));
+  { Color index }
+  AStream.WriteWord(WordToLE(PaletteIndex(AFont.Color)));
 
   { Font weight }
   if fssBold in AFont.Style then
@@ -3005,8 +3040,8 @@ begin
   if (AFormatRecord <> nil) and (uffBorder in AFormatRecord^.UsedFormattingFields) then
   begin
     // Left and right line colors
-    dw1 := AFormatRecord^.BorderStyles[cbWest].Color shl 16 +
-           AFormatRecord^.BorderStyles[cbEast].Color shl 23;
+    dw1 := PaletteIndex(AFormatRecord^.BorderStyles[cbWest].Color) shl 16 +
+           PaletteIndex(AFormatRecord^.BorderStyles[cbEast].Color) shl 23;
     // Border line styles
     if cbWest in AFormatRecord^.Border then
       dw1 := dw1 or (DWord(AFormatRecord^.BorderStyles[cbWest].LineStyle)+1);
@@ -3022,9 +3057,9 @@ begin
       dw1 := dw1 or $80000000;
 
     // Top, bottom and diagonal line colors
-    dw2 := FixColor(AFormatRecord^.BorderStyles[cbNorth].Color) +
-           FixColor(AFormatRecord^.BorderStyles[cbSouth].Color) shl 7 +
-           FixColor(AFormatRecord^.BorderStyles[cbDiagUp].Color) shl 14;
+    dw2 := PaletteIndex(AFormatRecord^.BorderStyles[cbNorth].Color) +
+           PaletteIndex(AFormatRecord^.BorderStyles[cbSouth].Color) shl 7 +
+           PaletteIndex(AFormatRecord^.BorderStyles[cbDiagUp].Color) shl 14;
     // In BIFF8 both diagonals have the same color - we use the color of the up-diagonal.
 
     // Diagonal line style
@@ -3041,11 +3076,11 @@ begin
     // Pattern color
     if AFormatRecord^.Background.FgColor = scTransparent
       then w3 := w3 or SYS_DEFAULT_FOREGROUND_COLOR
-      else w3 := w3 or FixColor(AFormatRecord^.Background.FgColor);
+      else w3 := w3 or PaletteIndex(AFormatRecord^.Background.FgColor);
     // Background color
     if AFormatRecord^.Background.BgColor = scTransparent
       then w3 := w3 or SYS_DEFAULT_BACKGROUND_COLOR shl 7
-      else w3 := w3 or (FixColor(AFormatRecord^.Background.BgColor) shl 7);
+      else w3 := w3 or (PaletteIndex(AFormatRecord^.Background.BgColor) shl 7);
   end;
 
   rec.Border_BkGr1 := DWordToLE(dw1);
@@ -3063,7 +3098,7 @@ initialization
   RegisterSpreadFormat(TsSpreadBIFF8Reader, TsSpreadBIFF8Writer, sfExcel8);
 
   // Converts the palette to litte-endian
-  MakeLEPalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
+  MakeLEPalette(PALETTE_BIFF8);
 
 end.
 

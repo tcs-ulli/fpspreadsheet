@@ -95,7 +95,7 @@ type
 
     procedure AddBuiltinNumFormats; virtual;
     function  FindNumFormatInList(ANumFormatStr: String): Integer;
-    function  FixColor(AColor: TsColor): TsColor; virtual;
+//    function  FixColor(AColor: TsColor): TsColor; virtual;
     procedure FixFormat(ACell: PCell); virtual;
     procedure GetSheetDimensions(AWorksheet: TsWorksheet;
       out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal); virtual;
@@ -404,7 +404,7 @@ begin
       exit;
   Result := -1;
 end;
-
+    (*
 {@@ ----------------------------------------------------------------------------
   If a color index is greater then the maximum palette color count this
   color is replaced by the closest palette color.
@@ -420,7 +420,7 @@ function TsCustomSpreadWriter.FixColor(AColor: TsColor): TsColor;
 begin
   Result := AColor;
 end;
-
+  *)
 {@@ ----------------------------------------------------------------------------
   If formatting features of a cell are not supported by the destination file
   format of the writer, here is the place to apply replacements.

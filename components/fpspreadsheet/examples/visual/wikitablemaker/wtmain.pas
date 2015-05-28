@@ -9,7 +9,7 @@ uses
   StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Grids, ColorBox, SynEdit,
   SynEditHighlighter, SynHighlighterHTML, SynHighlighterMulti,
   SynHighlighterCss, SynGutterCodeFolding, fpspreadsheetgrid,
-  fpstypes, fpspreadsheet, fpsallformats;
+  fpstypes, fpspalette, fpspreadsheet, fpsallformats;
 
 type
 
@@ -187,6 +187,7 @@ type
     procedure FontSizeComboBoxSelect(Sender: TObject);
     procedure FormActivate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure PageControlChange(Sender: TObject);
     procedure TabControlChange(Sender: TObject);
     procedure WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
@@ -194,6 +195,7 @@ type
     WorksheetGrid: TsWorksheetGrid;
     FCopiedFormat: TCell;
     FHighlighter: TSynCustomHighlighter;
+    FPalette: TsPalette;
     procedure LoadFile(const AFileName: String);
     procedure SetupBackgroundColorBox;
     procedure UpdateBackgroundColorIndex;
@@ -543,20 +545,22 @@ begin
   if (WorksheetGrid <> nil) and (WorksheetGrid.Workbook <> nil) then begin
     Items.Clear;
     Items.AddObject('no fill', TObject(PtrInt(clNone)));
-    for i:=0 to WorksheetGrid.Workbook.GetPaletteSize-1 do begin
-      clr := WorksheetGrid.Workbook.GetPaletteColor(i);
-      clrName := WorksheetGrid.Workbook.GetColorName(i);
+    for i:=0 to FPalette.Count-1 do begin
+      clr := FPalette[i];
+      clrName := GetColorName(clr);
       Items.AddObject(Format('%d: %s', [i, clrName]), TObject(PtrInt(clr)));
     end;
   end;
 end;
 
 procedure TMainFrm.CbBackgroundColorSelect(Sender: TObject);
+var
+  clr: TsColor;
 begin
   if CbBackgroundColor.ItemIndex <= 0 then
     with WorksheetGrid do BackgroundColors[Selection] := scNotDefined
   else
-    with WorksheetGrid do BackgroundColors[Selection] := CbBackgroundColor.ItemIndex - 1;
+    with WorksheetGrid do BackgroundColors[Selection] := PtrInt(CbBackgroundColor.Items.Objects[CbBackgroundColor.ItemIndex]);
 end;
 
 procedure TMainFrm.FontComboBoxSelect(Sender: TObject);
@@ -637,12 +641,20 @@ begin
   CbBackgroundColor.ColorRectWidth := CbBackgroundColor.ItemHeight - 6; // to get a square box...
   {$ENDIF}
 
+  FPalette := TsPalette.Create;
+  FPalette.AddExcelColors;
+
   // Initialize a new empty workbook
   AcNewExecute(nil);
 
   // Acitve control etc.
   PageControl.ActivePage := PgTable;
   ActiveControl := WorksheetGrid;
+end;
+
+procedure TMainFrm.FormDestroy(Sender: TObject);
+begin
+  FPalette.Free;
 end;
 
 procedure TMainFrm.PageControlChange(Sender: TObject);
@@ -726,13 +738,13 @@ end;
 
 procedure TMainFrm.UpdateBackgroundColorIndex;
 var
-  sClr: TsColor;
+  clr: TsColor;
 begin
-  with WorksheetGrid do sClr := BackgroundColors[Selection];
-  if sClr = scNotDefined then
+  with WorksheetGrid do clr := BackgroundColors[Selection];
+  if (clr = scNotDefined) or (clr = scTransparent) then
     CbBackgroundColor.ItemIndex := 0 // no fill
   else
-    CbBackgroundColor.ItemIndex := sClr + 1;
+    CbBackgroundColor.ItemIndex := CbBackgroundColor.Items.IndexOfObject(TObject(PtrInt(clr)));
 end;
 
 procedure TMainFrm.UpdateHorAlignmentActions;

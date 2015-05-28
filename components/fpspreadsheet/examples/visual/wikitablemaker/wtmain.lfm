@@ -9,6 +9,7 @@ object MainFrm: TMainFrm
   Menu = MainMenu
   OnActivate = FormActivate
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   ShowHint = True
   LCLVersion = '1.5'
   object MainToolBar: TToolBar

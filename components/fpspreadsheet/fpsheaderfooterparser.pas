@@ -20,11 +20,11 @@ type
     FontName: String;
     Size: Double;
     Style: TsHeaderFooterFontStyles;
-    Color: TsColorValue;
+    Color: TsColor;
     constructor Create; overload;
     constructor Create(AFont: TsFont); overload;
     constructor Create(AFontName: String; ASize: Double;
-      AStyle: TsHeaderFooterFontStyles; AColor: TsColorValue); overload;
+      AStyle: TsHeaderFooterFontStyles; AColor: TsColor); overload;
     procedure Assign(AFont: TObject);
   end;
 
@@ -99,7 +99,7 @@ begin
 end;
 
 constructor TsHeaderFooterFont.Create(AFontName: String; ASize: Double;
-  AStyle: TsHeaderFooterFontStyles; AColor: TsColorValue);
+  AStyle: TsHeaderFooterFontStyles; AColor: TsColor);
 begin
   FontName := AFontName;
   Size := ASize;

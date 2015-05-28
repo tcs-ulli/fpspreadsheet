@@ -10,7 +10,7 @@ program excel5write;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpsTypes, fpspreadsheet, xlsbiff5;
+  Classes, SysUtils, fpsTypes, fpSpreadsheet, fpsPalette, fpsUtils, xlsbiff5;
 
 const
   Str_First = 'First';
@@ -28,6 +28,7 @@ var
   i, r: Integer;
   number: Double;
   fmt: string;
+  palette: TsPalette;
 begin
   MyDir := ExtractFilePath(ParamStr(0));
 
@@ -359,10 +360,16 @@ begin
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('Colors');
-  for i:=0 to MyWorkbook.GetPaletteSize-1 do begin
-    MyWorksheet.WriteBlank(i, 0);
-    Myworksheet.WriteBackgroundColor(i, 0, TsColor(i));
-    MyWorksheet.WriteUTF8Text(i, 1, MyWorkbook.GetColorName(i));
+  palette := TsPalette.Create;
+  try
+    palette.UseColors(PALETTE_BIFF5);       // This stores the colors of BIFF5 files in the local palette
+    for i:=0 to palette.Count-1 do begin
+      MyWorksheet.WriteBlank(i, 0);
+      Myworksheet.WriteBackgroundColor(i, 0, palette[i]);
+      MyWorksheet.WriteUTF8Text(i, 1, GetColorName(palette[i]));
+    end;
+  finally
+    palette.Free;
   end;
 
   // Save the spreadsheet to a file

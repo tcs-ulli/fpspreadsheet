@@ -108,7 +108,7 @@ type
     function ReadFont(ANode: TDOMnode; APreferredIndex: Integer = -1): Integer;
     procedure ReadHeaderFooterFont(ANode: TDOMNode; var AFontName: String;
       var AFontSize: Double; var AFontStyle: TsHeaderFooterFontStyles;
-      var AFontColor: TsColorValue);
+      var AFontColor: TsColor);
     function ReadHeaderFooterText(ANode: TDOMNode): String;
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
@@ -561,7 +561,7 @@ var
   n: Integer;
   el, nEl: Integer;
   ns: Integer;
-  clr: TsColorvalue;
+  clr: TsColor;
   mask: String;
   timeIntervalStr: String;
   styleMapStr: String;
@@ -607,7 +607,7 @@ begin
       case Elements[el].Token of
         nftColor:
           begin
-            clr := FWorkbook.GetPaletteColor(Elements[el].IntValue);
+            clr := TsColor(Elements[el].IntValue);
             Result := Result + '<style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />';
           end;
 
@@ -679,7 +679,9 @@ begin
             // Mixed fraction
             if nfkFraction in Kind then
             begin
-              int := Elements[el].IntValue;
+              if Elements[el].Token = nftIntOptDigit
+                then int := 0
+                else int := Elements[el].IntValue;
               inc(el);
               while (el < nel) and not
                 (Elements[el].Token in [nftFracNumZeroDigit, nftFracNumOptDigit, nftFracNumSpaceDigit])
@@ -874,8 +876,6 @@ begin
   FMasterPageList := TFPList.Create;
   FHeaderFooterFontList := TObjectList.Create;  // frees objects
 
-  // Set up the default palette in order to have the default color names correct.
-  Workbook.UseDefaultPalette;
   // Initial base date in case it won't be read from file
   FDateMode := dm1899;
 end;
@@ -1129,7 +1129,7 @@ var
   fntName: String;
   fntSize: Double;
   fntStyle: TsHeaderFooterFontStyles;
-  fntColor: TsColorValue;
+  fntColor: TsColor;
 begin
   if not Assigned(AStylesNode) then
     exit;
@@ -1683,7 +1683,7 @@ begin
 
   s := GetAttrValue(ANode, 'fo:color');
   if s <> '' then
-    fntColor := FWorkbook.AddColorToPalette(HTMLColorStrToColor(s))
+    fntColor := HTMLColorStrToColor(s)
   else
     fntColor := FWorkbook.GetDefaultFont.Color;
 
@@ -1694,10 +1694,6 @@ begin
   end else
   if (APreferredIndex > -1) then
   begin
-    {  --- wp: No more missing font #4 now !!!
-    if (APreferredIndex = 4) then
-      raise Exception.Create('Cannot replace font #4');
-      }
     FWorkbook.ReplaceFont(APreferredIndex, fntName, fntSize, fntStyles, fntColor);
     Result := APreferredIndex;
   end else
@@ -1938,7 +1934,7 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadHeaderFooterFont(ANode: TDOMNode;
   var AFontName: String; var AFontSize: Double;
-  var AFontStyle: TsHeaderFooterFontStyles; var AFontColor: TsColorValue);
+  var AFontStyle: TsHeaderFooterFontStyles; var AFontColor: TsColor);
 var
   s: String;
 begin
@@ -2241,7 +2237,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     grouping: Boolean;
     nex: Integer;
     cs: String;
-    color: TsColorValue;
+    color: TsColor;
     hasColor: Boolean;
     idx: Integer;
   begin
@@ -2280,14 +2276,14 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       begin
         nf := nfFraction;
         s := GetAttrValue(node, 'number:min-integer-digits');
-        if s <> '' then fracInt := StrToInt(s) else fracInt := 0;
+        if s <> '' then fracInt := StrToInt(s) else fracInt := -1;
         s := GetAttrValue(node, 'number:min-numerator-digits');
         if s <> '' then fracNum := StrToInt(s) else fracNum := 0;
         s := GetAttrValue(node, 'number:min-denominator-digits');
         if s <> '' then fracDenom := StrToInt(s) else fracDenom := 0;
         s := GetAttrValue(node, 'number:denominator-value');
         if s <> '' then fracDenom := -StrToInt(s);
-        nfs := nfs + BuildFractionFormatString(fracInt > 0, fracNum, fracDenom);
+        nfs := nfs + BuildFractionFormatString(fracInt > -1, fracNum, fracDenom);
       end else
       if nodeName = 'number:scientific-number' then
       begin
@@ -2324,14 +2320,12 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         if s <> '' then
         begin
           hasColor := true;
-         // {                        // currently not needed
           color := HTMLColorStrToColor(s);
-          idx := FWorkbook.AddColorToPalette(color);
-          if idx < 8 then
-            nfs := Format('[%s]%s', [FWorkbook.GetColorName(idx), nfs])
-          else
-            nfs := Format('[Color%d]%s', [idx, nfs]);
-         // }
+          case color of
+            scBlack, scWhite, scRed, scGreen,
+            scBlue, scYellow, scMagenta, scCyan:
+              nfs := Format('[%s]%s', [GetColorName(color), nfs]);
+          end;
         end;
       end;
       node := node.NextSibling;
@@ -2913,7 +2907,7 @@ var
   numFmtStr: String;
   numFmtIndex: Integer;
   numFmtParams: TsNumFormatParams;
-  clr: TsColorValue;
+  clr: TsColor;
   s: String;
 
   procedure SetBorderStyle(ABorder: TsCellBorder; AStyleValue: String);
@@ -2925,7 +2919,7 @@ var
     s: String;
     wid: Double;
     linestyle: String;
-    rgb: TsColorValue;
+    rgb: TsColor;
     p: Integer;
   begin
     L := TStringList.Create;
@@ -2934,7 +2928,7 @@ var
       L.StrictDelimiter := true;
       L.DelimitedText := AStyleValue;
       wid := 0;
-      rgb := TsColorValue(-1);
+      rgb := scNotDefined;
       linestyle := '';
       for i:=0 to L.Count-1 do
       begin
@@ -2981,8 +2975,7 @@ var
       else
       if (linestyle = 'double') then
         fmt.BorderStyles[ABorder].LineStyle := lsDouble;
-      fmt.BorderStyles[ABorder].Color := IfThen(rgb = TsColorValue(-1),
-        scBlack, Workbook.AddColorToPalette(rgb));
+      fmt.BorderStyles[ABorder].Color := IfThen(rgb = scNotDefined, scBlack, rgb);
     finally
       L.Free;
     end;
@@ -3048,10 +3041,6 @@ begin
               fmt.FontIndex := ReadFont(styleChildNode, HYPERLINK_FONTINDEX)
             else
               fmt.FontIndex := ReadFont(styleChildNode);
-            {
-            if fmt.FontIndex = BOLD_FONTINDEX  then
-              Include(fmt.UsedFormattingFields, uffBold)
-            else }
             if fmt.FontIndex > 0 then
               Include(fmt.UsedFormattingFields, uffFont);
           end else
@@ -3062,8 +3051,7 @@ begin
             if (s <> '') and (s <> 'transparent') then begin
               clr := HTMLColorStrToColor(s);
               // ODS does not support background fill patterns!
-              fmt.Background.FgColor := IfThen(clr = TsColorValue(-1),
-                scTransparent, Workbook.AddColorToPalette(clr));
+              fmt.Background.FgColor := IfThen(clr = scNotDefined, scTransparent, clr);
               fmt.Background.BgColor := fmt.Background.FgColor;
               if (fmt.Background.BgColor <> scTransparent) then
               begin
@@ -4444,8 +4432,6 @@ end;
 -------------------------------------------------------------------------------}
 function TsSpreadOpenDocWriter.WriteBackgroundColorStyleXMLAsString(
   const AFormat: TsCellFormat): String;
-type
-  TRgb = record r,g,b,a: byte; end;
 const  // fraction of pattern color in fill pattern
   FRACTION: array[TsFillStyle] of Double = (
     0.0, 1.0, 0.75, 0.50, 0.25, 0.125, 0.0625,  // fsNoFill..fsGray6
@@ -4453,8 +4439,8 @@ const  // fraction of pattern color in fill pattern
     0.25, 0.25, 0.25, 0.25,                     // fsThinStripeHor..fsThinStripeDiagDown
     0.5, 6.0/16, 0.75, 7.0/16);                 // fsHatchDiag..fsThinHatchHor
 var
-  fc,bc: TsColorValue;
-  mix: TRgb;
+  fc,bc: TsColor;
+  mix: TRgba;
   fraction_fc, fraction_bc: Double;
 begin
   Result := '';
@@ -4463,22 +4449,22 @@ begin
     exit;
 
   // Foreground and background colors
-  fc := Workbook.GetPaletteColor(AFormat.Background.FgColor);
+  fc := AFormat.Background.FgColor;
   if Aformat.Background.BgColor = scTransparent then
-    bc := Workbook.GetPaletteColor(scWhite)
+    bc := scWhite
   else
-    bc := Workbook.GetPaletteColor(AFormat.Background.BgColor);
+    bc := AFormat.Background.BgColor;
+
   // Mixing fraction
   fraction_fc := FRACTION[AFormat.Background.Style];
   fraction_bc := 1.0 - fraction_fc;
-  // Mixed color
-  mix.r := Min(round(fraction_fc*TRgb(fc).r + fraction_bc*TRgb(bc).r), 255);
-  mix.g := Min(round(fraction_fc*TRgb(fc).g + fraction_bc*TRgb(bc).g), 255);
-  mix.b := Min(round(fraction_fc*TRgb(fc).b + fraction_bc*TRgb(bc).b), 255);
 
-  Result := Format('fo:background-color="%s" ', [
-    ColorToHTMLColorStr(TsColorValue(mix))
-  ]);
+  // Mixed color
+  mix.r := Min(round(fraction_fc*TRgba(fc).r + fraction_bc*TRgba(bc).r), 255);
+  mix.g := Min(round(fraction_fc*TRgba(fc).g + fraction_bc*TRgba(bc).g), 255);
+  mix.b := Min(round(fraction_fc*TRgba(fc).b + fraction_bc*TRgba(bc).b), 255);
+
+  Result := Format('fo:background-color="%s" ', [ColorToHTMLColorStr(TsColor(mix))]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4499,7 +4485,7 @@ begin
     Result := Result + Format('fo:border-bottom="%s %s %s" ', [
       BORDER_LINEWIDTHS[AFormat.BorderStyles[cbSouth].LineStyle],
       BORDER_LINESTYLES[AFormat.BorderStyles[cbSouth].LineStyle],
-      Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbSouth].Color)
+      ColorToHTMLColorStr(AFormat.BorderStyles[cbSouth].Color)
     ]);
     if AFormat.BorderStyles[cbSouth].LineStyle = lsDouble then
       Result := Result + 'style:border-linewidth-bottom="0.002cm 0.035cm 0.002cm" ';
@@ -4512,7 +4498,7 @@ begin
     Result := Result + Format('fo:border-left="%s %s %s" ', [
       BORDER_LINEWIDTHS[AFormat.BorderStyles[cbWest].LineStyle],
       BORDER_LINESTYLES[AFormat.BorderStyles[cbWest].LineStyle],
-      Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbWest].Color)
+      ColorToHTMLColorStr(AFormat.BorderStyles[cbWest].Color)
     ]);
     if AFormat.BorderStyles[cbWest].LineStyle = lsDouble then
       Result := Result + 'style:border-linewidth-left="0.002cm 0.035cm 0.002cm" ';
@@ -4525,7 +4511,7 @@ begin
     Result := Result + Format('fo:border-right="%s %s %s" ', [
       BORDER_LINEWIDTHS[AFormat.BorderStyles[cbEast].LineStyle],
       BORDER_LINESTYLES[AFormat.BorderStyles[cbEast].LineStyle],
-      Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbEast].Color)
+      ColorToHTMLColorStr(AFormat.BorderStyles[cbEast].Color)
     ]);
     if AFormat.BorderStyles[cbSouth].LineStyle = lsDouble then
       Result := Result + 'style:border-linewidth-right="0.002cm 0.035cm 0.002cm" ';
@@ -4538,7 +4524,7 @@ begin
     Result := Result + Format('fo:border-top="%s %s %s" ', [
       BORDER_LINEWIDTHS[AFormat.BorderStyles[cbNorth].LineStyle],
       BORDER_LINESTYLES[AFormat.BorderStyles[cbNorth].LineStyle],
-      Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbNorth].Color)
+      ColorToHTMLColorStr(AFormat.BorderStyles[cbNorth].Color)
     ]);
     if AFormat.BorderStyles[cbSouth].LineStyle = lsDouble then
       Result := Result + 'style:border-linewidth-top="0.002cm 0.035cm 0.002cm" ';
@@ -4550,7 +4536,7 @@ begin
     Result := Result + Format('style:diagonal-bl-tr="%s %s %s" ', [
       BORDER_LINEWIDTHS[AFormat.BorderStyles[cbDiagUp].LineStyle],
       BORDER_LINESTYLES[AFormat.BorderStyles[cbDiagUp].LineStyle],
-      Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbDiagUp].Color)
+      ColorToHTMLColorStr(AFormat.BorderStyles[cbDiagUp].Color)
     ]);
   end;
 
@@ -4559,7 +4545,7 @@ begin
     Result := Result + Format('style:diagonal-tl-br="%s %s %s" ', [
       BORDER_LINEWIDTHS[AFormat.BorderStyles[cbDiagDown].LineStyle],
       BORDER_LINESTYLES[AFormat.BorderStyles[cbDiagDown].LineStyle],
-      Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbDiagDown].Color)
+      ColorToHTMLColorStr(AFormat.BorderStyles[cbDiagDown].Color)
     ]);
   end;
 end;
@@ -4613,7 +4599,7 @@ begin
     Result := Result + 'style:text-line-through-style="solid" ';
 
   if AFont.Color <> defFnt.Color then
-    Result := Result + Format('fo:color="%s" ', [Workbook.GetPaletteColorAsHTMLStr(AFont.Color)]);
+    Result := Result + Format('fo:color="%s" ', [ColorToHTMLColorStr(AFont.Color)]);
 end;
 
 function TsSpreadOpenDocWriter.WriteFontStyleXMLAsString(

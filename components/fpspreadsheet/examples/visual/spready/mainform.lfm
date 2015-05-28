@@ -9,6 +9,7 @@ object MainFrm: TMainFrm
   Menu = MainMenu
   OnActivate = FormActivate
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   ShowHint = True
   LCLVersion = '1.5'
   object Panel1: TPanel
@@ -425,7 +426,7 @@ object MainFrm: TMainFrm
     end
   end
   object InspectorSplitter: TSplitter
-    Left = 639
+    Left = 591
     Height = 453
     Top = 84
     Width = 5
@@ -433,10 +434,10 @@ object MainFrm: TMainFrm
     ResizeAnchor = akRight
   end
   object InspectorPageControl: TPageControl
-    Left = 644
+    Left = 596
     Height = 453
     Top = 84
-    Width = 241
+    Width = 289
     ActivePage = PgCellValue
     Align = alRight
     TabIndex = 0
@@ -445,18 +446,20 @@ object MainFrm: TMainFrm
     object PgCellValue: TTabSheet
       Caption = 'Cell value'
       ClientHeight = 425
-      ClientWidth = 233
+      ClientWidth = 281
       object CellInspector: TValueListEditor
         Left = 0
         Height = 425
         Top = 0
-        Width = 233
+        Width = 281
         Align = alClient
         FixedCols = 0
+        MouseWheelOption = mwGrid
         RowCount = 15
         TabOrder = 0
         TitleStyle = tsNative
-        DisplayOptions = [doColumnTitles, doAutoColResize]
+        DisplayOptions = [doColumnTitles]
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goColSizing, goAlwaysShowEditor, goThumbTracking]
         Strings.Strings = (
           'Row='
           'Column='
@@ -478,8 +481,8 @@ object MainFrm: TMainFrm
           ''
         )
         ColWidths = (
-          114
-          115
+          138
+          139
         )
       end
     end
@@ -494,7 +497,7 @@ object MainFrm: TMainFrm
     Left = 0
     Height = 453
     Top = 84
-    Width = 639
+    Width = 591
     OnChange = TabControlChange
     Align = alClient
     TabOrder = 3
@@ -502,7 +505,7 @@ object MainFrm: TMainFrm
       Left = 2
       Height = 448
       Top = 3
-      Width = 635
+      Width = 587
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = False

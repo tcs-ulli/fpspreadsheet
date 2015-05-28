@@ -247,7 +247,6 @@ type
     { Utilities related to Workbooks }
     procedure Convert_sFont_to_Font(sFont: TsFont; AFont: TFont);
     procedure Convert_Font_to_sFont(AFont: TFont; sFont: TsFont);
-    function FindNearestPaletteIndex(AColor: TColor): TsColor;
 
     { Interfacing with WorkbookSource}
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
@@ -1392,15 +1391,15 @@ begin
             fsSolidFill:
               begin
                 Canvas.Brush.Style := bsSolid;
-                Canvas.Brush.Color := Workbook.GetPaletteColor(fmt^.Background.FgColor);
+                Canvas.Brush.Color := fmt^.Background.FgColor and $00FFFFFF;
               end;
             else
               if fmt^.Background.BgColor = scTransparent
                 then bgcolor := Color
-                else bgcolor := Workbook.GetPaletteColor(fmt^.Background.BgColor);
+                else bgcolor := fmt^.Background.BgColor and $00FFFFFF;
               if fmt^.Background.FgColor = scTransparent
                 then fgcolor := Color
-                else fgcolor := Workbook.GetPaletteColor(fmt^.Background.FgColor);
+                else fgcolor := fmt^.Background.FgColor and $00FFFFFF;
               CreateFillPattern(FillPatternBitmap, fmt^.Background.Style, fgColor, bgColor);
               Canvas.Brush.Style := bsImage;
               Canvas.Brush.Bitmap := FillPatternBitmap;
@@ -1424,7 +1423,7 @@ begin
       begin
         Canvas.Font.Name := fnt.FontName;
         Canvas.Font.Size := round(fnt.Size);
-        Canvas.Font.Color := Workbook.GetPaletteColor(fnt.Color);
+        Canvas.Font.Color := fnt.Color and $00FFFFFF;
         style := [];
         if fssBold in fnt.Style then Include(style, fsBold);
         if fssItalic in fnt.Style then Include(style, fsItalic);
@@ -1444,7 +1443,7 @@ begin
         if (nfkHasColor in numFmt.Sections[sidx].Kind) then
         begin
           clr := numFmt.Sections[sidx].Color;
-          Canvas.Font.Color := Workbook.GetPaletteColor(clr);
+          Canvas.Font.Color := clr and $00FFFFFF;
         end;
       end;
       // Wordwrap, text alignment and text rotation are handled by "DrawTextInCell".
@@ -1569,7 +1568,7 @@ const
   begin
     Canvas.Pen.Style := PEN_STYLES[ABorderStyle.LineStyle];
     Canvas.Pen.Width := PEN_WIDTHS[ABorderStyle.LineStyle];
-    Canvas.Pen.Color := Workbook.GetPaletteColor(ABorderStyle.Color);
+    Canvas.Pen.Color := ABorderStyle.Color and $00FFFFFF;
     Canvas.Pen.EndCap := pecSquare;
     width3 := (ABorderStyle.LineStyle in [lsThick, lsDouble]);
 
@@ -2282,6 +2281,7 @@ begin
     end;
 end;
 
+(*
 {@@ ----------------------------------------------------------------------------
   The "colors" used by the spreadsheet are indexes into the workbook's color
   palette. If the user wants to set a color to a particular RGB value this is
@@ -2294,7 +2294,7 @@ function TsCustomWorksheetGrid.FindNearestPaletteIndex(AColor: TColor): TsColor;
 begin
   Result := fpsVisualUtils.FindNearestPaletteIndex(Workbook, AColor);
 end;
-
+  *)
                                           (*
 {@@ ----------------------------------------------------------------------------
   Notification by the workbook link that a cell has been modified. --> Repaint.

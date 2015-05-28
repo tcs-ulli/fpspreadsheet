@@ -549,7 +549,7 @@ type
     FWorksheets: TFPList;
     FFormat: TsSpreadsheetFormat;
     FBuiltinFontCount: Integer;
-    FPalette: array of TsColorValue;
+    //FPalette: array of TsColorValue;
     FVirtualColCount: Cardinal;
     FVirtualRowCount: Cardinal;
     FReadWriteFlag: TsReadWriteFlag;
@@ -565,7 +565,7 @@ type
     FOnRemoveWorksheet: TsRemoveWorksheetEvent;
     FOnRemovingWorksheet: TsWorksheetEvent;
     FOnSelectWorksheet: TsWorksheetEvent;
-    FOnChangePalette: TNotifyEvent;
+//    FOnChangePalette: TNotifyEvent;
     FFileName: String;
     FLockCount: Integer;
     FLog: TStringList;
@@ -668,11 +668,8 @@ type
     function AddNumberFormat(AFormatStr: String): Integer;
     function GetNumberFormat(AIndex: Integer): TsNumFormatParams;
     function GetNumberFormatCount: Integer;
-
+                      (*
     { Color handling }
-    function AddColorToPalette(AColorValue: TsColorValue): TsColor;
-    function FindClosestColor(AColorValue: TsColorValue;
-      AMaxPaletteCount: Integer = -1): TsColor;
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
     function GetColorName(AColorIndex: TsColor): string; overload;
     procedure GetColorName(AColorValue: TsColorValue; out AName: String); overload;
@@ -684,6 +681,7 @@ type
     procedure UsePalette(APalette: PsPalette; APaletteCount: Word;
       ABigEndian: Boolean = false);
     function UsesColor(AColorIndex: TsColor): Boolean;
+                        *)
 
     { Utilities }
     procedure UpdateCaches;
@@ -708,7 +706,7 @@ type
     {@@ This event fires whenever a new worksheet is added }
     property OnAddWorksheet: TsWorksheetEvent read FOnAddWorksheet write FOnAddWorksheet;
     {@@ This event fires whenever the workbook palette changes. }
-    property OnChangePalette: TNotifyEvent read FOnChangePalette write FOnChangePalette;
+//    property OnChangePalette: TNotifyEvent read FOnChangePalette write FOnChangePalette;
     {@@ This event fires whenever a worksheet is changed }
     property OnChangeWorksheet: TsWorksheetEvent read FOnChangeWorksheet write FOnChangeWorksheet;
     {@@ This event fires whenever a workbook is loaded }
@@ -778,7 +776,6 @@ type
 procedure CopyCellFormat(AFromCell, AToCell: PCell);
 procedure CopyCellValue(AFromCell, AToCell: PCell);
 
-procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 //function SameCellBorders(ACell1, ACell2: PCell): Boolean; overload;
 function SameCellBorders(AFormat1, AFormat2: PsCellFormat): Boolean; //overload;
 
@@ -826,7 +823,7 @@ const
   DEF_CHART_NEUTRAL_COLORVALUE = $FFFFFF;
   DEF_TOOLTIP_TEXT_COLORVALUE = $000000;
   DEF_FONT_AUTOMATIC_COLORVALUE = $000000;
-
+                                 (*
 var
   {@@ RGB colors RGB in "big-endian" notation (red at left). The values are inverted
     at initialization to be little-endian at run-time!
@@ -883,26 +880,7 @@ var
     'beige',      // $15
     'wheat'       // $16
   );
-
-{@@ ----------------------------------------------------------------------------
-  If a palette is coded as big-endian (e.g. by copying the rgb values from
-  the OpenOffice documentation) the palette values can be converted by means
-  of this procedure to little-endian which is required internally by TsWorkbook.
-
-  @param APalette     Pointer to the palette to be converted. After conversion,
-                      its color values are replaced.
-  @param APaletteSize Number of colors contained in the palette
--------------------------------------------------------------------------------}
-procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
-var
-  i: Integer;
-begin
- {$PUSH}{$R-}
-  for i := 0 to APaletteSize-1 do
-    APalette^[i] := LongRGBToExcelPhysical(APalette^[i])
- {$POP}
-end;
-
+                                   *)
 {@@ ----------------------------------------------------------------------------
   Copies the format of a cell to another one.
 
@@ -916,7 +894,6 @@ var
   numFmtParams: TsNumFormatParams;
   nfs: String;
   font: TsFont;
-  clr: TsColorvalue;
   cb: TsCellBorder;
 begin
   Assert(AFromCell <> nil);
@@ -929,6 +906,7 @@ begin
   begin
     fmt := sourceSheet.ReadCellFormat(AFromCell);
     //destSheet.WriteCellFormat(AToCell, fmt);
+    {
     if (uffBackground in fmt.UsedFormattingFields) then
     begin
       clr := sourceSheet.Workbook.GetPaletteColor(fmt.Background.BgColor);
@@ -936,21 +914,26 @@ begin
       clr := sourceSheet.Workbook.GetPaletteColor(fmt.Background.FgColor);
       fmt.Background.FgColor := destSheet.Workbook.AddColorToPalette(clr);
     end;
+    }
     if (uffFont in fmt.UsedFormattingFields) then
     begin
       font := sourceSheet.ReadCellFont(AFromCell);
+      {
       clr := sourceSheet.Workbook.GetPaletteColor(font.Color);
       font.Color := destSheet.Workbook.AddColorToPalette(clr);
+      }
       fmt.FontIndex := destSheet.Workbook.FindFont(font.FontName, font.Size, font.Style, font.Color);
       if fmt.FontIndex = -1 then
         fmt.FontIndex := destSheet.Workbook.AddFont(font.FontName, font.Size, font.Style, font.Color);
     end;
+    {
     if (uffBorder in fmt.UsedFormattingFields) then
       for cb in fmt.Border do
       begin
         clr := sourceSheet.Workbook.GetPaletteColor(fmt.BorderStyles[cb].Color);
         fmt.BorderStyles[cb].Color := destSheet.Workbook.AddColorToPalette(clr);
       end;
+      }
     if (uffNumberformat in fmt.UsedFormattingFields) then
     begin
       numFmtParams := sourceSheet.Workbook.GetNumberFormat(fmt.NumberFormatIndex);
@@ -1086,7 +1069,8 @@ begin
           IfThen(fssItalic in fnt.Style, 'i', '.'),
           IfThen(fssUnderline in fnt.Style, 'u', '.'),
           IfThen(fssStrikeOut in fnt.Style, 's', '.'),
-          AWorkbook.GetPaletteColorAsHTMLStr(fnt.Color)
+          ColorToHTMLColorStr(fnt.Color)
+          //AWorkbook.GetPaletteColorAsHTMLStr(fnt.Color)
         ]));
     end;
     L.SaveToFile(AFileName);
@@ -2847,10 +2831,10 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns the background color of a cell as index into the workbook's color palette.
+  Returns the background color of a cell as rbg value
 
-  @param  ACell  Pointer to the cell
-  @return Index of the cell background color into the workbook's color palette
+  @param    ACell  Pointer to the cell
+  @return   Value containing the rgb bytes in little-endian order
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadBackgroundColor(ACell: PCell): TsColor;
 var
@@ -4857,8 +4841,7 @@ end;
 
   @param  ARow        The row of the cell
   @param  ACol        The column of the cell
-  @param  AFontColor  Index into the workbook's color palette identifying the
-                      new text color.
+  @param  AFontColor  RGB value of the new text color
   @return Index of the font in the workbook's font list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer;
@@ -4872,8 +4855,7 @@ end;
   is created. Returns the index of this font in the font list.
 
   @param  ACell       Pointer to the cell
-  @param  AFontColor  Index into the workbook's color palette identifying the
-                      new text color.
+  @param  AFontColor  RGB value of the new text color
   @return Index of the font in the workbook's font list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontColor(ACell: PCell; AFontColor: TsColor): Integer;
@@ -5093,8 +5075,8 @@ end;
   @param  ARow              Row index of the cell
   @param  ACol              Column index of the cell
   @param  AFillStyle        Fill style to be used - see TsFillStyle
-  @param  APatternColor     Palette index of the pattern color
-  @param  ABackgroundColor  Palette index of the background color
+  @param  APatternColor     RGB value of the pattern color
+  @param  ABackgroundColor  RGB value of the background color
   @return Pointer to cell
 
   @NOTE Is replaced by uniform fill if WriteBackgroundColor is called later.
@@ -5111,8 +5093,8 @@ end;
 
   @param  ACell             Pointer to the cell
   @param  AStyle            Fill style ("pattern") to be used - see TsFillStyle
-  @param  APatternColor     Palette index of the pattern color
-  @param  ABackgroundColor  Palette index of the background color
+  @param  APatternColor     RGB value of the pattern color
+  @param  ABackgroundColor  RGB value of the background color
 
   @NOTE Is replaced by uniform fill if WriteBackgroundColor is called later.
 -------------------------------------------------------------------------------}
@@ -5147,9 +5129,9 @@ end;
 
   @param  ARow       Row index of the cell
   @param  ACol       Column index of the cell
-  @param  AColor     Index of the new background color into the workbook's
-                     color palette. Use the color index scTransparent to
-                     erase an existing background color.
+  @param  AColor     RGB value of the new background color.
+                     Use the value "scTransparent" to clear an existing
+                     background color.
   @return Pointer to cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteBackgroundColor(ARow, ACol: Cardinal;
@@ -5163,9 +5145,9 @@ end;
   Sets a uniform background color of a cell.
 
   @param  ACell      Pointer to cell
-  @param  AColor     Index of the new background color into the workbook's
-                     color palette. Use the color index scTransparent to
-                     erase an existing background color.
+  @param  AColor     RGB value of the new background color.
+                     Use the value "scTransparent" to clear an existing
+                     background color.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBackgroundColor(ACell: PCell; AColor: TsColor);
 begin
@@ -5185,8 +5167,7 @@ end;
   @param  ACol       Column index of the cell
   @param  ABorder    Indicates to which border (left/top etc) this color is
                      to be applied
-  @param  AColor     Index of the new border color into the workbook's
-                     color palette.
+  @param  AColor     RGB value of the new border color
   @return Pointer to cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorderColor(ARow, ACol: Cardinal;
@@ -5203,8 +5184,7 @@ end;
   @param  ACell      Pointer to cell
   @param  ABorder    Indicates to which border (left/top etc) this color is
                      to be applied
-  @param  AColor     Index of the new border color into the workbook's
-                     color palette.
+  @param  AColor     RGB value of the new border color
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorderColor(ACell: PCell; ABorder: TsCellBorder;
   AColor: TsColor);
@@ -5355,7 +5335,7 @@ end;
   @param  ACol       Column index of the considered cell
   @param  ABorder    Identifier of the border to be modified
   @param  ALineStyle Identifier for the new line style of the border
-  @param  AColor     Palette index for the color of the border line
+  @param  AColor     RGB value of the border line color
   @return Pointer to cell
 
   @see WriteBorderStyles
@@ -5374,7 +5354,7 @@ end;
   @param  ACell      Pointer to cell
   @param  ABorder    Identifier of the border to be modified
   @param  ALineStyle Identifier for the new line style of the border
-  @param  AColor     Palette index for the color of the border line
+  @param  AColor     RGB value of the color of the border line
 
   @see WriteBorderStyles
 -------------------------------------------------------------------------------}
@@ -6301,8 +6281,6 @@ begin
   FormatSettings := UTF8FormatSettings;
   FormatSettings.ShortDateFormat := MakeShortDateFormat(FormatSettings.ShortDateFormat);
   FormatSettings.LongDateFormat := MakeLongDateFormat(FormatSettings.ShortDateFormat);
-
-  UseDefaultPalette;
 
   FFontList := TFPList.Create;
   SetDefaultFont(DEFAULT_FONTNAME, DEFAULT_FONTSIZE);
@@ -7249,7 +7227,7 @@ end;
   @param AFontName  Name of the font (like 'Arial')
   @param ASize      Size of the font in points
   @param AStyle     Style of the font, a combination of TsFontStyle elements
-  @param AColor     Color of the font, given by its index into the workbook's palette.
+  @param AColor     RGB valoe of the font color
   @return           Index of the font in the workbook's font list
 -------------------------------------------------------------------------------}
 function TsWorkbook.AddFont(const AFontName: String; ASize: Single;
@@ -7301,11 +7279,13 @@ end;
   @param AFontName  Name of the font (like 'Arial')
   @param ASize      Size of the font in points
   @param AStyle     Style of the font, a combination of TsFontStyle elements
-  @param AColor     Color of the font, given by its index into the workbook's palette.
+  @param AColor     RGB value of the font color
   @return           Index of the font in the font list, or -1 if not found.
 -------------------------------------------------------------------------------}
 function TsWorkbook.FindFont(const AFontName: String; ASize: Single;
   AStyle: TsFontStyles; AColor: TsColor): Integer;
+const
+  EPS = 1e-3;
 var
   fnt: TsFont;
 begin
@@ -7314,9 +7294,9 @@ begin
     fnt := TsFont(FFontList.Items[Result]);
     if (fnt <> nil) and
        SameText(AFontName, fnt.FontName) and
-      (abs(ASize - fnt.Size) < 0.001) and   // careful when comparing floating point numbers
+       SameValue(ASize, fnt.Size, EPS) and   // careful when comparing floating point numbers
       (AStyle = fnt.Style) and
-      (AColor = fnt.Color)    // Take care of limited palette size!
+      (AColor = fnt.Color)
     then
       exit;
   end;
@@ -7520,7 +7500,7 @@ function TsWorkbook.GetNumberFormatCount: Integer;
 begin
   Result := FNumFormatList.Count;
 end;
-
+                            (*
 {@@ ----------------------------------------------------------------------------
   Adds a color to the palette and returns its palette index, but only if the
   color does not already exist - in this case, it returns the index of the
@@ -7602,7 +7582,7 @@ begin
 
   if Assigned(FOnChangePalette) then FOnChangePalette(self);
 end;
-
+                          *)
 {@@ ----------------------------------------------------------------------------
   Adds a (simple) error message to an internal list
 
@@ -7639,47 +7619,7 @@ function TsWorkbook.GetErrorMsg: String;
 begin
   Result := FLog.Text;
 end;
-
-{@@ ----------------------------------------------------------------------------
-  Finds the palette color index which points to a color that is closest to a
-  given color. "Close" means here smallest length of the rgb-difference vector.
-
-  @param   AColorValue       Rgb color value to be considered
-  @param   AMaxPaletteCount  Number of palette entries considered. Example:
-                             BIFF5/BIFF8 can write only 64 colors, i.e
-                             AMaxPaletteCount = 64
-  @return  Palette index of the color closest to AColorValue
--------------------------------------------------------------------------------}
-function TsWorkbook.FindClosestColor(AColorValue: TsColorValue;
-  AMaxPaletteCount: Integer = -1): TsColor;
-type
-  TRGBA = record r,g,b, a: Byte end;
-var
-  rgb: TRGBA;
-  rgb0: TRGBA absolute AColorValue;
-  dist: Double;
-  minDist: Double;
-  i: Integer;
-  n: Integer;
-begin
-  Result := scNotDefined;
-  minDist := 1E108;
-  if AMaxPaletteCount = -1 then
-    n := Length(FPalette)
-  else
-    n := Min(Length(FPalette), AMaxPaletteCount);
-  for i:=0 to n-1 do
-  begin
-    rgb := TRGBA(GetPaletteColor(i));
-    dist := sqr(rgb.r - rgb0.r) + sqr(rgb.g - rgb0.g) + sqr(rgb.b - rgb0.b);
-    if dist < minDist then
-    begin
-      Result := i;
-      minDist := dist;
-    end;
-  end;
-end;
-
+                           (*
 {@@ ----------------------------------------------------------------------------
   Converts a fpspreadsheet color into into a string RRGGBB.
   Note that colors are written to xls files as ABGR (where A is 0).
@@ -7758,26 +7698,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Reads the rgb color for the given index from the current palette. Can be
-  type-cast to TColor for usage in GUI applications.
-
-  @param  AColorIndex  Index of the color considered
-  @return A number containing the rgb components in little-endian notation.
--------------------------------------------------------------------------------}
-function TsWorkbook.GetPaletteColor(AColorIndex: TsColor): TsColorValue;
-begin
-  if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then
-  begin
-    if ((FPalette = nil) or (Length(FPalette) = 0)) then
-      Result := DEFAULT_PALETTE[AColorIndex]
-    else
-      Result := FPalette[AColorIndex];
-  end
-  else
-    Result := $000000;  // "black" as default
-end;
-
-{@@ ----------------------------------------------------------------------------
   Converts the palette color of the given index to a string that can be used
   in HTML code. For ODS.
 
@@ -7788,36 +7708,6 @@ end;
 function TsWorkbook.GetPaletteColorAsHTMLStr(AColorIndex: TsColor): String;
 begin
   Result := ColorToHTMLColorStr(GetPaletteColor(AColorIndex));
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Replaces a color value of the current palette by a new value. The color must
-  be given as ABGR (little-endian), with A=0).
-
-  @param  AColorIndex   Palette index of the color to be replaced
-  @param  AColorValue   Number containing the rgb components of the new color
--------------------------------------------------------------------------------}
-procedure TsWorkbook.SetPaletteColor(AColorIndex: TsColor;
-  AColorValue: TsColorValue);
-begin
-  if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then
-  begin
-    if ((FPalette = nil) or (Length(FPalette) = 0)) then
-      DEFAULT_PALETTE[AColorIndex] := AColorValue
-    else
-      FPalette[AColorIndex] := AColorValue;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Returns the count of palette colors
--------------------------------------------------------------------------------}
-function TsWorkbook.GetPaletteSize: Integer;
-begin
-  if (FPalette = nil) or (Length(FPalette) = 0) then
-    Result := High(DEFAULT_PALETTE) + 1
-  else
-    Result := Length(FPalette);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7919,7 +7809,7 @@ begin
   end;
   Result := false;
 end;
-
+   *)
 
 {*******************************************************************************
 *                          TsBasicSpreadReaderWriter                           *
@@ -7963,7 +7853,6 @@ end;
 procedure TsBasicSpreadWriter.CheckLimitations;
 var
   lastCol, lastRow: Cardinal;
-  i, n: Integer;
 begin
   Workbook.GetLastRowColIndex(lastRow, lastCol);
 
@@ -7974,22 +7863,10 @@ begin
   // Check column count
   if lastCol >= FLimitations.MaxColCount then
     Workbook.AddErrorMsg(rsMaxColsExceeded, [lastCol+1, FLimitations.MaxColCount]);
-
-  // Check color count.
-  n := Workbook.GetPaletteSize;
-  if n > FLimitations.MaxPaletteSize then
-    for i:= FLimitations.MaxPaletteSize to n-1 do
-      if Workbook.UsesColor(i) then
-      begin
-        Workbook.AddErrorMsg(rsTooManyPaletteColors, [n, FLimitations.MaxPaletteSize]);
-        break;
-      end;
 end;
 
 
 initialization
-  // Default palette
-  MakeLEPalette(@DEFAULT_PALETTE, Length(DEFAULT_PALETTE));
 
 finalization
   SetLength(GsSpreadFormats, 0);

@@ -28,7 +28,7 @@ interface
 uses
   Classes, Graphics, SysUtils, Controls, StdCtrls, ComCtrls, ValEdit, ActnList,
   LResources,
-  fpstypes, fpspreadsheet, {%H-}fpsAllFormats;
+  fpstypes, fpspalette, fpspreadsheet, {%H-}fpsAllFormats;
 
 type
   {@@ Event handler procedure for displaying a message if an error or
@@ -42,7 +42,7 @@ type
   TsNotificationItem = (lniWorkbook,
     lniWorksheet, lniWorksheetAdd, lniWorksheetRemoving, lniWorksheetRemove,
     lniWorksheetRename,
-    lniCell, lniSelection, lniAbortSelection, lniRow, lniPalette);
+    lniCell, lniSelection, lniAbortSelection, lniRow); //, lniPalette);
   {@@ This set accompanies the notification between WorkbookSource and visual
     controls and describes which items have changed in the spreadsheet. }
   TsNotificationItems = set of TsNotificationItem;
@@ -78,7 +78,7 @@ type
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
     procedure SetFileName(const AFileName: TFileName);
     procedure SetOptions(AValue: TsWorkbookOptions);
-    procedure WorkbookChangedPaletteHandler(Sender: TObject);
+//    procedure WorkbookChangedPaletteHandler(Sender: TObject);
     procedure WorkbookOpenedHandler(Sender: TObject);
     procedure WorksheetAddedHandler(Sender: TObject; ASheet: TsWorksheet);
     procedure WorksheetChangedHandler(Sender: TObject; ASheet: TsWorksheet);
@@ -436,6 +436,9 @@ type
     property FixedCols default 0;
   end;
 
+var
+  ComboColors: TsPalette = nil;
+
 procedure Register;
 
 
@@ -444,7 +447,6 @@ implementation
 uses
   Types, Math, TypInfo, LCLType, LCLProc, Dialogs, Forms,
   fpsStrings, fpsUtils;
-
 
 {@@ ----------------------------------------------------------------------------
   Registers the spreadsheet components in the Lazarus component palette,
@@ -797,7 +799,7 @@ begin
   FWorkbook.OnRemovingWorksheet := @WorksheetRemovingHandler;
   FWorkbook.OnRenameWorksheet := @WorksheetRenamedHandler;
   FWorkbook.OnSelectWorksheet := @WorksheetSelectedHandler;
-  FWorkbook.OnChangePalette := @WorkbookChangedPaletteHandler;
+//  FWorkbook.OnChangePalette := @WorkbookChangedPaletteHandler;
   // Pass options to workbook
   SetOptions(FOptions);
 end;
@@ -1240,7 +1242,7 @@ begin
     EnableControls;
   end;
 end;
-
+                                              (*
 {@@ ----------------------------------------------------------------------------
   Event handler called whenever the palette of the workbook is changed.
 -------------------------------------------------------------------------------}
@@ -1248,7 +1250,7 @@ procedure TsWorkbookSource.WorkbookChangedPaletteHandler(Sender: TObject);
 begin
   Unused(Sender);
   NotifyListeners([lniPalette]);
-end;
+end;                                            *)
 
 {@@ ----------------------------------------------------------------------------
   Event handler called whenever a new workbook is opened.
@@ -1970,7 +1972,7 @@ begin
         Brush.Style := bsClear;
       end else
       begin
-        Brush.Color := Workbook.GetPaletteColor(clr);
+        Brush.Color := clr and $00FFFFFF;
         Brush.Style := bsSolid;
       end;
       Pen.Color := clBlack;
@@ -2010,6 +2012,7 @@ procedure TsCellCombobox.ExtractFromCell(ACell: PCell);
 var
   fnt: TsFont;
   clr: TsColor;
+  idx: Integer;
 begin
   case FFormatItem of
     cfiFontName:
@@ -2091,7 +2094,7 @@ var
 begin
   Unused(AData);
   if (Worksheet = nil) or
-     ([lniCell, lniSelection, lniPalette]*AChangedItems = [])
+     ([lniCell, lniSelection]*AChangedItems = [])
   then
     exit;
 
@@ -2100,11 +2103,9 @@ begin
      (lniSelection in AChangedItems)
   then
     ExtractFromCell(activeCell);
-
-  if (FFormatItem in [cfiFontColor, cfiBorderColor, cfiBackgroundColor]) and
-     (lniPalette in AChangedItems)
-  then
-    Populate;
+                                  {
+  if (FFormatItem in [cfiFontColor, cfiBorderColor, cfiBackgroundColor]) then
+    Populate;                      }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2136,6 +2137,7 @@ end;
 procedure TsCellCombobox.Populate;
 var
   i: Integer;
+  clr: TsColor;
 begin
   if Workbook = nil then
     exit;
@@ -2145,18 +2147,19 @@ begin
       Items.Assign(Screen.Fonts);
     cfiFontSize:
       Items.CommaText := '8,9,10,11,12,13,14,16,18,20,22,24,26,28,32,36,48,72';
-    cfiFontColor:
-      for i:=0 to Workbook.GetPaletteSize-1 do
-        Items.AddObject(Workbook.GetColorName(i), TObject(PtrInt(i)));
-    cfiBackgroundColor:
-      begin
-        Items.AddObject('(none)', TObject(scTransparent));
-        for i:=0 to Workbook.GetPaletteSize-1 do
-          Items.AddObject(Workbook.GetColorName(i), TObject(PtrInt(i)));
-      end;
+    cfiBackgroundColor,
+    cfiFontColor,
     cfiBorderColor:
-      for i:=0 to Workbook.GetPaletteSize-1 do
-        Items.AddObject(Workbook.GetColorName(i), TObject(PtrInt(i)));
+      begin
+        Items.Clear;
+        if FFormatItem = cfiBackgroundColor then
+          Items.AddObject('(none)', TObject(scTransparent));
+        for i:=0 to ComboColors.Count-1 do
+        begin
+          clr := ComboColors[i];
+          Items.AddObject(GetColorName(clr), TObject(PtrInt(clr)));
+        end;
+      end;
     else
       raise Exception.Create('[TsCellCombobox.Populate] Unknown cell format item.');
   end;
@@ -2673,8 +2676,8 @@ begin
     else
       AStrings.Add(Format('BorderStyles[%s]=%s, %s', [
         GetEnumName(TypeInfo(TsCellBorder), ord(cb)),
-        GetEnumName(TypeInfo(TsLineStyle), ord(fmt.BorderStyles[cbEast].LineStyle)),
-        Workbook.GetColorName(fmt.BorderStyles[cbEast].Color)]));
+        GetEnumName(TypeInfo(TsLineStyle), ord(fmt.BorderStyles[cb].LineStyle)),
+        GetColorName(fmt.BorderStyles[cb].Color)]));
 
   if (ACell = nil) or not (uffBackground in fmt.UsedformattingFields) then
   begin
@@ -2685,10 +2688,10 @@ begin
   begin
     AStrings.Add(Format('Style=%s', [
       GetEnumName(TypeInfo(TsFillStyle), ord(fmt.Background.Style))]));
-    AStrings.Add(Format('PatternColor=%d (%s)', [
-      fmt.Background.FgColor, Workbook.GetColorName(fmt.Background.FgColor)]));
-    AStrings.Add(Format('BackgroundColor=%d (%s)', [
-      fmt.Background.BgColor, Workbook.GetColorName(fmt.Background.BgColor)]));
+    AStrings.Add(Format('PatternColor=$%.8x (%s)', [
+      fmt.Background.FgColor, GetColorName(fmt.Background.FgColor)]));
+    AStrings.Add(Format('BackgroundColor=$%.8x (%s)', [
+      fmt.Background.BgColor, GetColorName(fmt.Background.BgColor)]));
   end;
 
   if (ACell = nil) or not (uffNumberFormat in fmt.UsedFormattingFields) then
@@ -2949,12 +2952,16 @@ initialization
 
   CellClipboard := TsCellList.Create;
 
+  ComboColors := TsPalette.Create;
+  ComboColors.AddExcelColors;
+
   RegisterPropertyToSkip(TsSpreadsheetInspector, 'RowHeights', 'For compatibility with older Laz versions.', '');
   RegisterPropertyToSkip(TsSpreadsheetInspector, 'ColWidths', 'For compatibility with older Laz versions.', '');
 
 
 finalization
   CellClipboard.Free;
+  if ComboColors <> nil then ComboColors.Free;
 
 
 end.

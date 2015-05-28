@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, Grids,
   ColorBox, ValEdit,
-  fpstypes, fpspreadsheetgrid, fpspreadsheet,
+  fpstypes, fpspalette, fpspreadsheetgrid, fpspreadsheet,
   {%H-}fpsallformats;
 
 type
@@ -325,6 +325,7 @@ type
     procedure FontSizeComboBoxSelect(Sender: TObject);
     procedure FormActivate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure InspectorPageControlChange(Sender: TObject);
     procedure MemoFormulaEditingDone(Sender: TObject);
     procedure TabControlChange(Sender: TObject);
@@ -334,6 +335,7 @@ type
 
   private
     FCopiedFormat: TCell;
+    FPalette: TsPalette;
 
     function EditComment(ACaption: String; var AText: String): Boolean;
     procedure LoadFile(const AFileName: String);
@@ -928,9 +930,9 @@ begin
   if WorksheetGrid.Workbook <> nil then begin
     Items.Clear;
     Items.AddObject('no fill', TObject(PtrInt(clNone)));
-    for i:=0 to WorksheetGrid.Workbook.GetPaletteSize-1 do begin
-      clr := WorksheetGrid.Workbook.GetPaletteColor(i);
-      clrName := WorksheetGrid.Workbook.GetColorName(i);
+    for i:=0 to FPalette.Count-1 do begin
+      clr := FPalette[i];
+      clrName := GetColorName(clr);
       Items.AddObject(Format('%d: %s', [i, clrName]), TObject(PtrInt(clr)));
     end;
   end;
@@ -947,7 +949,7 @@ begin
   if CbBackgroundColor.ItemIndex <= 0 then
     with WorksheetGrid do BackgroundColors[Selection] := scNotDefined
   else
-    with WorksheetGrid do BackgroundColors[Selection] := CbBackgroundColor.ItemIndex - 1;
+    with WorksheetGrid do BackgroundColors[Selection] := PtrInt(CbBackgroundColor.Items.Objects[CbBackgroundColor.ItemIndex]);
 end;
 
 procedure TMainFrm.CbHeaderStyleChange(Sender: TObject);
@@ -1087,10 +1089,18 @@ begin
   FontSizeCombobox.DropDownCount := DROPDOWN_COUNT;
   CbBackgroundColor.DropDownCount := DROPDOWN_COUNT;
 
+  FPalette := TsPalette.Create;
+  FPalette.AddExcelColors;
+
   // Initialize a new empty workbook
   AcNewExecute(nil);
 
   ActiveControl := WorksheetGrid;
+end;
+
+procedure TMainFrm.FormDestroy(Sender: TObject);
+begin
+  FPalette.Free;
 end;
 
 procedure TMainFrm.InspectorPageControlChange(Sender: TObject);
@@ -1184,13 +1194,14 @@ end;
 
 procedure TMainFrm.UpdateBackgroundColorIndex;
 var
-  sClr: TsColor;
+  clr: TsColor;
 begin
-  with WorksheetGrid do sClr := BackgroundColors[Selection];
-  if sClr = scNotDefined then
+  with WorksheetGrid do
+    clr := BackgroundColors[Selection];
+  if (clr = scNotDefined) or (clr = scTransparent) then
     CbBackgroundColor.ItemIndex := 0 // no fill
   else
-    CbBackgroundColor.ItemIndex := sClr + 1;
+    CbBackgroundColor.ItemIndex := CbBackgroundColor.Items.IndexOfObject(TObject(PtrInt(clr)));
 end;
 
 procedure TMainFrm.UpdateHorAlignmentActions;
@@ -1214,6 +1225,7 @@ var
   cb: TsCellBorder;
   r1,r2,c1,c2: Cardinal;
   fmt: TsCellFormat;
+  nfparams: TsNumFormatParams;
 begin
   with CellInspector do
   begin
@@ -1223,10 +1235,10 @@ begin
     if InspectorPageControl.ActivePage = PgCellValue then
     begin
       if ACell=nil
-        then Strings.Add('Row=')
+        then Strings.Add(Format('Row=%d', [WorksheetGrid.GetWorksheetRow(WorksheetGrid.Row)]))
         else Strings.Add(Format('Row=%d', [ACell^.Row]));
       if ACell=nil
-        then Strings.Add('Column=')
+        then Strings.Add(Format('Column=%d', [WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col)]))
         else Strings.Add(Format('Column=%d', [ACell^.Col]));
       if ACell=nil
         then Strings.Add('ContentType=')
@@ -1308,29 +1320,40 @@ begin
         else
           Strings.Add(Format('BorderStyles[%s]=%s, %s', [
             GetEnumName(TypeInfo(TsCellBorder), ord(cb)),
-            GetEnumName(TypeInfo(TsLineStyle), ord(fmt.BorderStyles[cbEast].LineStyle)),
-            WorksheetGrid.Workbook.GetColorName(fmt.BorderStyles[cbEast].Color)
+            GetEnumName(TypeInfo(TsLineStyle), ord(fmt.BorderStyles[cb].LineStyle)),
+            GetColorName(fmt.BorderStyles[cb].Color)
           ]));
       if (ACell=nil) or not (uffBackground in fmt.UsedformattingFields)
         then Strings.Add('BackgroundColor=')
-        else Strings.Add(Format('BackgroundColor=%d (%s)', [
+        else Strings.Add(Format('BackgroundColor=$%8x (%s)', [
                fmt.Background.BgColor,
-               WorksheetGrid.Workbook.GetColorName(fmt.Background.BgColor)
+               GetColorName(fmt.Background.BgColor)
              ]));
       if (ACell=nil) or not (uffNumberFormat in fmt.UsedFormattingFields)
         then Strings.Add('NumberFormat=')
-        else Strings.Add(Format('NumberFormat=%s', [GetEnumName(TypeInfo(TsNumberFormat), ord(fmt.NumberFormat))]));
+        else begin
+          nfparams := WorksheetGrid.Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+          if nfparams = nil then
+          begin
+            Strings.Add('NumberFormat=General');
+            Strings.Add('NumberFormatStr=');
+          end else
+          begin
+            Strings.Add(Format('NumberFormat=%s', [GetEnumName(TypeInfo(TsNumberFormat), ord(nfparams.NumFormat))]));
+            Strings.Add(Format('NumberFormatStr=%s', [nfparams.NumFormatStr]));
+          end;
+        end;
+      {
       if (ACell=nil) or not (uffNumberFormat in fmt.UsedFormattingFields)
         then Strings.Add('NumberFormatStr=')
         else Strings.Add('NumberFormatStr=' + fmt.NumberFormatStr);
-      if not WorksheetGrid.Worksheet.IsMerged(ACell) then
-        Strings.Add('Merged range=')
-      else
-      begin
-        WorksheetGrid.Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
-        Strings.Add('Merged range=' + GetCellRangeString(r1, c1, r2, c2));
-      end;
-
+      }
+      if not WorksheetGrid.Worksheet.IsMerged(ACell)
+        then Strings.Add('Merged range=')
+        else begin
+          WorksheetGrid.Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+          Strings.Add('Merged range=' + GetCellRangeString(r1, c1, r2, c2));
+        end;
     end;
   end;
 end;

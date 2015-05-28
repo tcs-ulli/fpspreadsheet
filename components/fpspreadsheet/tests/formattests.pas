@@ -156,7 +156,7 @@ type
 implementation
 
 uses
-  TypInfo, fpsPatches, fpsutils, fpsnumformat, fpscsv;
+  TypInfo, fpsPatches, fpsutils, fpsnumformat, fpspalette, fpscsv;
 
 const
   FmtNumbersSheet = 'NumbersFormat'; //let's distinguish it from the regular numbers sheet
@@ -311,7 +311,7 @@ begin
   SollBorderLineStyles[5] := lsDouble;
   SollBorderLineStyles[6] := lsHair;
 
-  SollBorderColors[0] := scBlue;
+  SollBorderColors[0] := scBlack;
   SollBorderColors[1] := scRed;
   SollBorderColors[2] := scBlue;
   SollBorderColors[3] := scGray;
@@ -728,7 +728,6 @@ begin
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
   try
-    MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
     MyWorkSheet:= MyWorkBook.AddWorksheet(BackgroundSheet);
     for style in TsFillStyle do begin
       row := ord(style);
@@ -752,8 +751,7 @@ begin
       MyWorksheet := GetWorksheetByName(MyWorkBook, BackgroundSheet);
     if MyWorksheet=nil then
       fail('Error in test code. Failed to get named worksheet');
-
-    for style in TsFillStyle do begin
+     for style in TsFillStyle do begin
       row := ord(style);
 
       // Column B has BK_COLOR as backgroundcolor of the patterns
@@ -770,13 +768,13 @@ begin
       begin
         if PATTERN_COLOR <> patt.FgColor then
           CheckEquals(
-            MyWorkbook.GetColorName(PATTERN_COLOR),
-            MyWorkbook.GetColorName(patt.FgColor),
+            GetColorName(PATTERN_COLOR),
+            GetColorName(patt.FgColor),
             'Test saved fill pattern color mismatch, cell ' + CellNotation(MyWorksheet, row, col));
         if BK_COLOR <> patt.BgColor then
           CheckEquals(
-            MyWorkbook.GetColorName(BK_COLOR),
-            MyWorkbook.GetColorName(patt.BgColor),
+            GetColorName(BK_COLOR),
+            GetColorName(patt.BgColor),
             'Test saved fill background color mismatch, cell ' + CellNotation(MyWorksheet, row, col));
       end;
 
@@ -794,20 +792,20 @@ begin
       begin
         if PATTERN_COLOR <> patt.FgColor then
           CheckEquals(
-            MyWorkbook.GetColorName(PATTERN_COLOR),
-            MyWorkbook.GetColorName(patt.FgColor),
+            GetColorName(PATTERN_COLOR),
+            GetColorName(patt.FgColor),
             'Test saved fill pattern color mismatch, cell ' + CellNotation(MyWorksheet, row, col));
         // SolidFill is a special case: here the background color is always equal
         // to the pattern color - the cell layout does not know this...
         if style = fsSolidFill then
           CheckEquals(
-            MyWorkbook.GetColorName(PATTERN_COLOR),
-            MyWorkbook.GetColorName(patt.BgColor),
+            GetColorName(PATTERN_COLOR),
+            GetColorName(patt.BgColor),
             'Test saved fill pattern color mismatch, cell ' + CellNotation(MyWorksheet, row, col))
         else
           CheckEquals(
-            MyWorkbook.GetColorName(scTransparent),
-            MyWorkbook.GetColorName(patt.BgColor),
+            GetColorName(scTransparent),
+            GetColorName(patt.BgColor),
             'Test saved fill background color mismatch, cell ' + CellNotation(MyWorksheet, row, col));
       end;
     end;
@@ -983,11 +981,11 @@ begin
     begin
       for col := 1 to 10 do
       begin
-        MyWorksheet.WriteBorders(row*2, col*2, borders);
+        MyWorksheet.WriteBorders(row*2-1, col*2-1, borders);
         for b in borders do
         begin
-          MyWorksheet.WriteBorderLineStyle(row*2, col*2, b, SollBorderLineStyles[ls]);
-          MyWorksheet.WriteBorderColor(row*2, col*2, b, SollBorderColors[c]);
+          MyWorksheet.WriteBorderLineStyle(row*2-1, col*2-1, b, SollBorderLineStyles[ls]);
+          MyWorksheet.WriteBorderColor(row*2-1, col*2-1, b, SollBorderColors[c]);
           inc(ls);
           if ls > High(SollBorderLineStyles) then
           begin
@@ -1021,7 +1019,7 @@ begin
     begin
       for col := 1 to 10 do
       begin
-        MyCell := MyWorksheet.FindCell(row*2, col*2);
+        MyCell := MyWorksheet.FindCell(row*2-1, col*2-1);
         if myCell = nil then
           fail('Error in test code. Failed to get cell.');
         for b in borders do
@@ -1034,8 +1032,8 @@ begin
           expected := ord(SollBorderLineStyles[ls]);
           if AFormat in [sfExcel8, sfOOXML] then
             case b of
-              cbDiagUp  : diagUp_ls := expected;
-              cbDiagDown: expected := diagUp_ls;
+              cbDiagUp   : diagUp_ls := expected;
+              cbDiagDown : expected := diagUp_ls;
             end;
           CheckEquals(expected, current,
             'Test saved border line style mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
@@ -1046,8 +1044,8 @@ begin
           // in the "diagonal-down" case.
           if AFormat in [sfExcel8, sfOOXML] then
             case b of
-              cbDiagUp  : diagUp_clr := expected;
-              cbDiagDown: expected := diagUp_clr;
+              cbDiagUp   : diagUp_clr := expected;
+              cbDiagDown : expected := diagUp_clr;
             end;
           CheckEquals(expected, current,
             'Test saved border color mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
@@ -1591,55 +1589,64 @@ var
   fnt: TsFont;
   actual, expected: String;
   i: Integer;
+  palette: TsPalette;
 begin
-  MyWorkbook := TsWorkbook.Create;
+  palette := TsPalette.Create;
   try
-    MyWorksheet:= MyWorkBook.AddWorksheet(SHEETNAME);
-    for r := 0 to 7 do     // each row has a different font size
-      for c := 0 to 7 do   // each column has a different font color
-      begin
-        MyWorksheet.WriteNumber(r, c, 123);
-        MyWorksheet.WriteBackgroundColor(r, c, 0);
-        MyWorksheet.WriteFont(r, c, 'Times New Roman', FontSizes[r], [], c);  // Biff2 has only 8 colors --> re-use the black!
-        // --> in total 64 combinations
-      end;
-    TempFile:=NewTempFile;
-    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+    palette.AddBuiltinColors;
+
+    MyWorkbook := TsWorkbook.Create;
+    try
+      MyWorksheet:= MyWorkBook.AddWorksheet(SHEETNAME);
+      for r := 0 to 7 do     // each row has a different font size
+        for c := 0 to 7 do   // each column has a different font color
+        begin
+          MyWorksheet.WriteNumber(r, c, 123);
+          MyWorksheet.WriteBackgroundColor(r, c, 0);
+          MyWorksheet.WriteFont(r, c, 'Times New Roman', FontSizes[r], [], palette[c]);  // Biff2 has only 8 colors --> re-use the black!
+          // --> in total 64 combinations
+        end;
+      TempFile:=NewTempFile;
+      MyWorkBook.WriteToFile(TempFile, AFormat, true);
+    finally
+      MyWorkbook.Free;
+    end;
+
+    // Open the spreadsheet
+    MyWorkbook := TsWorkbook.Create;
+    try
+      MyWorkbook.ReadFromFile(TempFile, AFormat);
+
+      // 1st sheet: merged cells with text
+      if AFormat = sfExcel2 then
+        MyWorksheet := MyWorkbook.GetFirstWorksheet
+      else
+        MyWorksheet := GetWorksheetByName(MyWorkBook, SHEETNAME);
+      if MyWorksheet=nil then
+        fail('Error in test code. Failed to get named worksheet ' + SHEETNAME);
+
+      for r:=0 to MyWorksheet.GetLastRowIndex do
+        for c := 0 to MyWorksheet.GetLastColIndex do
+        begin
+          cell := MyWorksheet.FindCell(r, c);
+          fnt := MyWorksheet.ReadCellFont(cell);
+          expected := FloatToStr(FontSizes[r]);
+          actual := FloatToStr(fnt.Size);
+          CheckEquals(expected, actual,
+            'Font size mismatch, cell '+ CellNotation(MyWorksheet, r, c));
+          expected := IntToStr(palette[c]);
+          actual := IntToStr(fnt.Color);
+          CheckEquals(expected, actual,
+            'Font color mismatch, cell '+ CellNotation(MyWorksheet, r, c));
+        end;
+
+    finally
+      MyWorkbook.Free;
+      DeleteFile(TempFile);
+    end;
+
   finally
-    MyWorkbook.Free;
-  end;
-
-  // Open the spreadsheet
-  MyWorkbook := TsWorkbook.Create;
-  try
-    MyWorkbook.ReadFromFile(TempFile, AFormat);
-
-    // 1st sheet: merged cells with text
-    if AFormat = sfExcel2 then
-      MyWorksheet := MyWorkbook.GetFirstWorksheet
-    else
-      MyWorksheet := GetWorksheetByName(MyWorkBook, SHEETNAME);
-    if MyWorksheet=nil then
-      fail('Error in test code. Failed to get named worksheet ' + SHEETNAME);
-
-    for r:=0 to MyWorksheet.GetLastRowIndex do
-      for c := 0 to MyWorksheet.GetLastColIndex do
-      begin
-        cell := MyWorksheet.FindCell(r, c);
-        fnt := MyWorksheet.ReadCellFont(cell);
-        expected := FloatToStr(FontSizes[r]);
-        actual := FloatToStr(fnt.Size);
-        CheckEquals(expected, actual,
-          'Font size mismatch, cell '+ CellNotation(MyWorksheet, r, c));
-        expected := IntToStr(c);
-        actual := IntToStr(fnt.Color);
-        CheckEquals(expected, actual,
-          'Font color mismatch, cell '+ CellNotation(MyWorksheet, r, c));
-      end;
-
-  finally
-    MyWorkbook.Free;
-    DeleteFile(TempFile);
+    palette.Free;
   end;
 end;
 

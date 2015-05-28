@@ -10,7 +10,7 @@ uses
 
 procedure Convert_sFont_to_Font(AWorkbook: TsWorkbook; sFont: TsFont; AFont: TFont);
 procedure Convert_Font_to_sFont(AWorkbook: TsWorkbook; AFont: TFont; sFont: TsFont);
-function FindNearestPaletteIndex(AWorkbook: TsWorkbook; AColor: TColor): TsColor;
+//function FindNearestPaletteIndex(AWorkbook: TsWorkbook; AColor: TColor): TsColor;
 function WrapText(ACanvas: TCanvas; const AText: string; AMaxWidth: integer): string;
 
 
@@ -36,7 +36,7 @@ begin
     if fssItalic in sFont.Style then AFont.Style := AFont.Style + [fsItalic];
     if fssUnderline in sFont.Style then AFont.Style := AFont.Style + [fsUnderline];
     if fssStrikeout in sFont.Style then AFont.Style := AFont.Style + [fsStrikeout];
-    AFont.Color := AWorkbook.GetPaletteColor(sFont.Color);
+    AFont.Color := TColor(sFont.Color and $00FFFFFF);
   end;
 end;
 
@@ -56,10 +56,10 @@ begin
     if fsItalic in AFont.Style then Include(sFont.Style, fssItalic);
     if fsUnderline in AFont.Style then Include(sFont.Style, fssUnderline);
     if fsStrikeout in AFont.Style then Include(sFont.Style, fssStrikeout);
-    sFont.Color := FindNearestPaletteIndex(AWorkbook, AFont.Color);
+    sFont.Color := ColorToRGB(AFont.Color);
   end;
 end;
-
+                                                (*
 function FindNearestPaletteIndex(AWorkbook: TsWorkbook; AColor: TColor): TsColor;
 
   procedure ColorToHSL(RGB: TColor; out H, S, L : double);
@@ -148,7 +148,7 @@ begin
     end;
   end;
 end;
-
+        *)
 {@@ ----------------------------------------------------------------------------
   Wraps text by inserting line ending characters so that the lines are not
   longer than AMaxWidth.

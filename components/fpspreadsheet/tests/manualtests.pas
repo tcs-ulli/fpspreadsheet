@@ -63,17 +63,20 @@ type
     {$ENDIF}
     // For BIFF8 format, writes all background colors in A1..A16
     procedure TestBiff8CellBackgroundColor;
+
+    procedure TestNumberFormats;
   end;
 
 implementation
 
 uses
-  fpstypes, fpsUtils, rpnFormulaUnit;
+  fpstypes, fpsUtils, fpsPalette, rpnFormulaUnit;
 
 const
   COLORSHEETNAME='color_sheet'; //for background color tests
   RPNSHEETNAME='rpn_formula_sheet'; //for rpn formula tests
   FORMULASHEETNAME='formula_sheet';  // for string formula tests
+  NUMBERFORMATSHEETNAME='number format sheet';  // for number format tests
   OUTPUT_FORMAT = sfExcel8; //change manually if you want to test different formats. To do: automatically output all formats
 
 var
@@ -184,6 +187,7 @@ var
   Cell : PCell;
   i: cardinal;
   RowOffset: cardinal;
+  palette: TsPalette;
 begin
   if OUTPUT_FORMAT <> sfExcel8 then
     Ignore('This test only applies to BIFF8 XLS output format.');
@@ -196,15 +200,74 @@ begin
   if Workbook = nil then
     Workbook := TsWorkbook.Create;
 
-  Worksheet := Workbook.AddWorksheet(COLORSHEETNAME);
-  WorkSheet.WriteUTF8Text(0,1,'TSpreadManualTests.TestBiff8CellBackgroundColor');
-  RowOffset := 1;
-  for i:=0 to Workbook.GetPaletteSize-1 do begin
-    WorkSheet.WriteUTF8Text(i+RowOffset,0,'BACKGROUND COLOR TEST');
-    Cell := Worksheet.GetCell(i+RowOffset, 0);
-    Worksheet.WriteBackgroundColor(Cell, TsColor(i));
-    WorkSheet.WriteUTF8Text(i+RowOffset,1,'Cell to the left should be '+Workbook.GetColorName(i)+'. Please check.');
+  palette := TsPalette.Create;
+  try
+    palette.AddBuiltinColors;
+    palette.AddExcelColors;
+
+    Worksheet := Workbook.AddWorksheet(COLORSHEETNAME);
+    WorkSheet.WriteUTF8Text(0, 1, 'TSpreadManualTests.TestBiff8CellBackgroundColor');
+    RowOffset := 1;
+    for i:=0 to palette.Count-1 do begin
+      cell := WorkSheet.WriteUTF8Text(i+RowOffset,0,'BACKGROUND COLOR TEST');
+      Worksheet.WriteBackgroundColor(Cell, palette[i]);
+      Worksheet.WriteFontColor(cell, HighContrastColor(palette[i]));
+      WorkSheet.WriteUTF8Text(i+RowOffset,1,'Cell to the left should be '+GetColorName(palette[i])+'. Please check.');
+    end;
+    Worksheet.WriteColWidth(0, 30);
+    Worksheet.WriteColWidth(1, 60);
+  finally
+    palette.Free;
   end;
+end;
+
+procedure TSpreadManualTests.TestNumberFormats();
+// source: forum post
+// http://forum.lazarus.freepascal.org/index.php/topic,19887.msg134114.html#msg134114
+// possible fix for values there too
+const
+  Values: Array[0..4] of Double = (12000.34, -12000.34, 0.0001234, -0.0001234, 0.0);
+  FormatStrings: array[0..24] of String = (
+    'General',
+    '0',     '0.00',     '0.0000',
+    '#,##0', '#,##0.00', '#,##0.0000',
+    '0%',    '0.00%',    '0.0000%',
+    '0,',    '0.00,',    '0.0000,',
+    '0E+00', '0.00E+00', '0.0000E+00',
+    '0E-00', '0.00E-00', '0.0000E-00',
+    '# ?/?', '# ??/??',  '# ????/????',
+    '?/?',   '??/??',    '????/????'
+  );
+var
+  Worksheet: TsWorksheet;
+  Cell : PCell;
+  i: cardinal;
+  r, c: Cardinal;
+  palette: TsPalette;
+  nfs: String;
+begin
+  if OUTPUT_FORMAT <> sfExcel8 then
+    Ignore('This test only applies to BIFF8 XLS output format.');
+
+  // No worksheets in BIFF2. Since main interest is here in formulas we just jump
+  // off here - need to change this in the future...
+  if OUTPUT_FORMAT = sfExcel2 then
+    Ignore('BIFF2 does not support worksheets. Ignoring manual tests for now');
+
+  if Workbook = nil then
+    Workbook := TsWorkbook.Create;
+
+  Worksheet := Workbook.AddWorksheet(NUMBERFORMATSHEETNAME);
+  WorkSheet.WriteUTF8Text(0, 1, 'Number format tests');
+
+  for r:=0 to High(FormatStrings) do
+  begin
+    Worksheet.WriteUTF8Text(r+2, 0, FormatStrings[r]);
+    for c:=0 to High(Values) do
+      Worksheet.WriteNumber(r+2, c+1, values[c], nfCustom, FormatStrings[r]);
+  end;
+
+  Worksheet.WriteColWidth(0, 20);
 end;
 
 {$IFDEF FPSPREAD_HAS_NEWRPNSUPPORT}

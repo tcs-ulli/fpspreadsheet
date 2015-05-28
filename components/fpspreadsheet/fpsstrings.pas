@@ -67,6 +67,66 @@ resourcestring
 
   rsCannotSortMerged = 'The cell range cannot be sorted because it contains merged cells.';
 
+  // Colors
+  rsAqua = 'aqua';
+  rsBeige = 'beige';
+  rsBlack = 'black';
+  rsBlue = 'blue';
+  rsBlueGray = 'blue gray';
+  rsBrown = 'brown';
+  rsCoral = 'coral';
+  rsCyan = 'cyan';
+  rsDarkBlue = 'dark blue';
+  rsDarkGreen = 'dark green';
+  rsDarkPurple = 'dark purple';
+  rsDarkRed = 'dark red';
+  rsDarkTeal = 'dark teal';
+  rsGold = 'gold';
+  rsGray = 'gray';
+  rsGray10pct = '10% gray';
+  rsGray20pct = '20% gray';
+  rsGray25pct = '25% gray';
+  rsGray40pct = '40% gray';
+  rsGray50pct = '50% gray';
+  rsGray80pct = '80% gray';
+  rsGreen = 'green';
+  rsIceBlue = 'ice blue';
+  rsIndigo = 'indigo';
+  rsIvory = 'ivory';
+  rsLavander = 'lavander';
+  rsLightBlue = 'light blue';
+  rsLightGreen = 'light green';
+  rsLightOrange = 'light orange';
+  rsLightTurquoise = 'light turquoise';
+  rsLightYellow = 'light yellow';
+  rsLime = 'lime';
+  rsMagenta = 'magenta';
+  rsNavy = 'navy';
+  rsOceanBlue = 'ocean blue';
+  rsOlive = 'olive';
+  rsOliveGreen = 'olive green';
+  rsOrange = 'orange';
+  rsPaleBlue = 'pale blue';
+  rsPeriwinkle = 'periwinkle';
+  rsPink = 'pink';
+  rsPlum = 'plum';
+  rsPurple = 'purple';
+  rsRed = 'red';
+  rsRose = 'rose';
+  rsSeaGreen = 'sea green';
+  rsSilver = 'silver';
+  rsSkyBlue = 'sky blue';
+  rsTan = 'tan';
+  rsTeal = 'teal';
+  rsVeryDarkGreen = 'very dark green';
+  rsViolet = 'violet';
+  rsWheat = 'wheat';
+  rsWhite = 'white';
+  rsYellow = 'yellow';
+
+  rsNotDefined = 'not defined';
+  rsTransparent = 'transparent';
+
   rsTRUE = 'TRUE';               // wp: Do we really want to translate these strings?
   rsFALSE = 'FALSE';
   rsErrEmptyIntersection = '#NULL!';

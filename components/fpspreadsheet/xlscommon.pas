@@ -11,7 +11,7 @@ interface
 
 uses
   Classes, SysUtils, DateUtils, lconvencoding,
-  fpsTypes, fpSpreadsheet, fpsUtils, fpsNumFormatParser,
+  fpsTypes, fpSpreadsheet, fpsUtils, fpsNumFormatParser, fpsPalette,
   fpsReaderWriter;
 
 const
@@ -211,7 +211,7 @@ const
   { System colors, for BIFF5-BIFF8 }
   SYS_DEFAULT_FOREGROUND_COLOR           = $0040;
   SYS_DEFAULT_BACKGROUND_COLOR           = $0041;
-
+  SYS_DEFAULT_WINDOW_TEXT_COLOR          = $7FFF;
 
   { Error codes }
   ERR_INTERSECTION_EMPTY                 = $00;  // #NULL!
@@ -348,11 +348,11 @@ type
     RecordSize: Word;
     FCodepage: string; // in a format prepared for lconvencoding.ConvertEncoding
     FDateMode: TDateMode;
-    FPaletteFound: Boolean;
     FIncompleteCell: PCell;
     FIncompleteNote: String;
     FIncompleteNoteLength: Word;
     FFirstNumFormatIndexInFile: Integer;
+    FPalette: TsPalette;
     procedure AddBuiltinNumFormats; override;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual; //overload;
     // Extracts a number out of an RK value
@@ -360,9 +360,12 @@ type
     // Returns the numberformat for a given XF record
     procedure ExtractNumberFormat(AXFIndex: WORD;
       out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String); virtual;
+    procedure FixColors;
     // Tries to find if a number cell is actually a date/datetime/time cell and retrieves the value
     function IsDateTime(Number: Double; ANumberFormat: TsNumberFormat;
       ANumberFormatStr: String; out ADateTime: TDateTime): Boolean;
+    procedure PopulatePalette; virtual;
+
     // Here we can add reading of records which didn't change across BIFF5-8 versions
     // Read a blank cell
     procedure ReadBlank(AStream: TStream); override;
@@ -433,6 +436,7 @@ type
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
+    destructor Destroy; override;
   end;
 
 
@@ -443,12 +447,13 @@ type
     FDateMode: TDateMode;
     FCodePage: String;  // in a format prepared for lconvencoding.ConvertEncoding
     FFirstNumFormatIndexInFile: Integer;
+    FPalette: TsPalette;
     procedure AddBuiltinNumFormats; override;
     function FindXFIndex(ACell: PCell): Integer; virtual;
-    function FixColor(AColor: TsColor): TsColor; override;
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
     function GetPrintOptions: Word; virtual;
+    function PaletteIndex(AColor: TsColor): Word;
 
     // Helper function for writing the BIFF header
     procedure WriteBIFFHeader(AStream: TStream; ARecID, ARecSize: Word);
@@ -548,6 +553,8 @@ type
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
+    destructor Destroy; override;
+    procedure CheckLimitations; override;
   end;
 
 procedure AddBuiltinBiffFormats(AList: TStringList;
@@ -773,14 +780,29 @@ end;
 constructor TsSpreadBIFFReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+
+  FPalette := TsPalette.Create;
+  PopulatePalette;
+
   FCellFormatList := TsCellFormatList.Create(true);
-  // Allow duplicates! XF indexes get out of sync if not all format records are in list
+  // true = allow duplicates! XF indexes get out of sync if not all format records are in list
+
   // Initial base date in case it won't be read from file
   FDateMode := dm1900;
+
   // Limitations of BIFF5 and BIFF8 file format
   FLimitations.MaxColCount := 256;
   FLimitations.MaxRowCount := 65536;
   FLimitations.MaxPaletteSize := 64;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Destructor of the reader class
+-------------------------------------------------------------------------------}
+destructor TsSpreadBIFFReader.Destroy;
+begin
+  FPalette.Free;
+  inherited Destroy;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -813,7 +835,6 @@ begin
       ACell^.FormatIndex := 0;
   end;
 end;
-
 
 {@@ ----------------------------------------------------------------------------
   Extracts a number out of an RK value.
@@ -868,6 +889,47 @@ begin
   begin
     ANumberFormat := nfGeneral;
     ANumberFormatStr := '';
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  It is a problem of the biff file structure that the font is loaded before the
+  palette. Therefore, when reading the font, we cannot determine its rgb color.
+  We had stored temporarily the palette index in the font color member and
+  are replacing it here by the corresponding rgb color. This is possible because
+  FixFontColors is called at the end of the workbook globals records when
+  everything is known.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.FixColors;
+var
+  i: Integer;
+  fnt: TsFont;
+  fmt: PsCellFormat;
+
+  procedure FixColor(var AColor: TsColor);
+  begin
+    if IsPaletteIndex(AColor) then
+      AColor := FPalette[AColor and $00FFFFFF];
+  end;
+
+begin
+  for i:=0 to FWorkbook.GetFontCount - 1 do
+  begin
+    fnt := FWorkbook.GetFont(i);
+    FixColor(fnt.Color);
+  end;
+
+  for i:=0 to FCellFormatList.Count-1 do
+  begin
+    fmt := FCellFormatList[i];
+    FixColor(fmt^.Background.BgColor);
+    FixColor(fmt^.Background.FgColor);
+    FixColor(fmt^.BorderStyles[cbEast].Color);
+    FixColor(fmt^.BorderStyles[cbWest].Color);
+    FixColor(fmt^.BorderStyles[cbNorth].Color);
+    FixColor(fmt^.BorderStyles[cbSouth].Color);
+    FixColor(fmt^.BorderStyles[cbDiagUp].Color);
+    FixColor(fmt^.BorderStyles[cbDiagDown].Color);
   end;
 end;
 
@@ -1463,17 +1525,15 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadPalette(AStream: TStream);
 var
-  i, n: Word;
-  pal: Array of TsColorValue;
+  n: Word;
 begin
+  // Read palette size
   n := WordLEToN(AStream.ReadWord) + 8;
-  SetLength(pal, n);
-  for i:=0 to 7 do
-    pal[i] := Workbook.GetPaletteColor(i);
-  for i:=8 to n-1 do
-    pal[i] := DWordLEToN(AStream.ReadDWord);
-  Workbook.UsePalette(@pal[0], n, false);
-  FPaletteFound := true;
+  FPalette.Clear;
+  FPalette.AddBuiltinColors;
+  // Read palette colors and add them to the palette
+  while FPalette.Count < n do
+    FPalette.AddColor(DWordLEToN(AStream.ReadDWord));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2129,6 +2189,15 @@ begin
     FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Populates the reader's palette by default colors. Will be overwritten if the
+  file contains a palette on its own
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.PopulatePalette;
+begin
+  FPalette.AddBuiltinColors;
+end;
+
 
 {------------------------------------------------------------------------------}
 {                            TsSpreadBIFFWriter                                }
@@ -2142,14 +2211,25 @@ constructor TsSpreadBIFFWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
 
-  // Initial base date in case it won't be set otherwise.
-  // Use 1900 to get a bit more range between 1900..1904.
-  FDateMode := dm1900;
-
   // Limitations of BIFF5 and BIFF8 file formats
   FLimitations.MaxColCount := 256;
   FLimitations.MaxRowCount := 65536;
   FLimitations.MaxPaletteSize := 64;
+
+  // Initial base date in case it won't be set otherwise.
+  // Use 1900 to get a bit more range between 1900..1904.
+  FDateMode := dm1900;
+
+  // Color palette
+  FPalette := TsPalette.Create;
+  FPalette.AddBuiltinColors;
+  FPalette.CollectFromWorkbook(AWorkbook);
+end;
+
+destructor TsSpreadBIFFWriter.Destroy;
+begin
+  FPalette.Free;
+  inherited Destroy;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2165,23 +2245,27 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Checks limitations of the file format. Overridden to take care of the
+  color palette which can only contain a given number of entries.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.CheckLimitations;
+begin
+  inherited CheckLimitations;
+  // Check color count.
+  if FPalette.Count > FLimitations.MaxPaletteSize then
+  begin
+    Workbook.AddErrorMsg(rsTooManyPaletteColors, [FPalette.Count, FLimitations.MaxPaletteSize]);
+    FPalette.Trim(FLimitations.MaxPaletteSize);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Determines the index of the XF record, according to formatting of the
   given cell
 -------------------------------------------------------------------------------}
 function TsSpreadBIFFWriter.FindXFIndex(ACell: PCell): Integer;
 begin
   Result := LAST_BUILTIN_XF + ACell^.FormatIndex;
-end;
-
-function TsSpreadBIFFWriter.FixColor(AColor: TsColor): TsColor;
-var
-  rgb: TsColorValue;
-begin
-  if AColor >= Limitations.MaxPaletteSize then begin
-    rgb := Workbook.GetPaletteColor(AColor);
-    Result := Workbook.FindClosestColor(rgb, FLimitations.MaxPaletteSize);
-  end else
-    Result := AColor;
 end;
 
 function TsSpreadBIFFWriter.GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
@@ -2232,6 +2316,20 @@ begin
     Result := Result or $0040;
   if poUseStartPageNumber in FWorksheet.PageLayout.Options then
     Result := Result or $0080;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines the index of the specified color in the writer's palette, or, if
+  not found, gets the index of the "closest" color.
+-------------------------------------------------------------------------------}
+function TsSpreadBIFFWriter.PaletteIndex(AColor: TsColor): Word;
+var
+  idx: Integer;
+begin
+  idx := FPalette.FindColor(AColor, Limitations.MaxPaletteSize);
+  if idx = -1 then
+    idx := FPalette.FindClosestColorIndex(AColor, Limitations.MaxPaletteSize);
+  Result := word(idx);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2695,14 +2793,14 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Writes the PALETTE record for the color palette.
-  Valid for BIFF3-BIFF8. BIFF2 has no palette in file.
+  Valid for BIFF3-BIFF8. BIFF2 has no palette in the file.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WritePalette(AStream: TStream);
 const
   NUM_COLORS = 56;
 var
   i, n: Integer;
-  rgb: TsColorValue;
+  rgb: TsColor;
 begin
   { BIFF Record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_PALETTE, 2 + 4*NUM_COLORS);
@@ -2710,13 +2808,13 @@ begin
   { Number of colors }
   AStream.WriteWord(WordToLE(NUM_COLORS));
 
-  { Take the colors from the palette of the Worksheet }
-  n := Workbook.GetPaletteSize;
+  { Take the colors from the internal palette of the writer }
+  n := FPalette.Count;
 
   { Skip the first 8 entries - they are hard-coded into Excel }
   for i := 8 to 8 + NUM_COLORS - 1 do
   begin
-    rgb := Math.IfThen(i < n, Workbook.GetPaletteColor(i), $FFFFFF);
+    rgb := Math.IfThen(i < n, FPalette[i], $FFFFFF);
     AStream.WriteDWord(DWordToLE(rgb))
   end;
 end;

@@ -103,7 +103,6 @@
         <ComponentName Value="MainFrm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="mainform"/>
       </Unit1>
       <Unit2>
         <Filename Value="..\shared\scsvparamsform.pas"/>
@@ -128,6 +127,7 @@
       <Unit5>
         <Filename Value="..\shared\sctrls.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="sCtrls"/>
       </Unit5>
       <Unit6>
         <Filename Value="..\shared\scurrencyform.pas"/>
