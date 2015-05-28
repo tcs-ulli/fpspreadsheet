@@ -126,6 +126,7 @@ resourcestring
 
   rsNotDefined = 'not defined';
   rsTransparent = 'transparent';
+  rsPaletteIndex = 'Palette index %d';
 
   rsTRUE = 'TRUE';               // wp: Do we really want to translate these strings?
   rsFALSE = 'FALSE';

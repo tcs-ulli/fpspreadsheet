@@ -2010,10 +2010,15 @@ begin
     scYellow     : Result := rsYellow;
     scTransparent: Result := rsTransparent;
     scNotDefined : Result := rsNotDefined;
-    else           if rgba.a = 0 then
-                     Result := Format('r%d g%d b%d', [rgba.r, rgba.g, rgba.b])
-                   else
-                     Result := '';
+    else
+      case rgba.a of
+        $00:
+          Result := Format('R%d G%d B%d', [rgba.r, rgba.g, rgba.b]);
+        scPaletteIndexMask shr 24:
+          Result := Format(rsPaletteIndex, [AColor and $00FFFFFF]);
+        else
+          Result := '';
+      end;
   end;
 end;
 
