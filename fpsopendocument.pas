@@ -626,6 +626,9 @@ begin
         nftCurrSymbol:
           Result := Result + '<number:currency-symbol>' + Elements[el].TextValue + '</number:currency-symbol>';
 
+        nftGeneral:
+           Result := Result + '<number:number number:min-integer-digits="1" />';
+
         nftIntTh:
           begin
             Result := Result + '<number:number number:min-integer-digits="1" number:grouping="true"';
@@ -2256,19 +2259,27 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       if nodeName = 'number:number' then
       begin
         s := GetAttrValue(node, 'number:decimal-places');
-        if s = '' then s := GetAttrValue(node, 'decimal-places');
-        if s <> '' then decs := StrToInt(s) else decs := 0;
-        grouping := GetAttrValue(node, 'number:grouping') = 'true';
-        s := GetAttrValue(node, 'number:display-factor');
-        if s <> '' then f := StrToFloat(s, FPointSeparatorSettings) else f := 1.0;
-        nf := IfThen(grouping, nfFixedTh, nfFixed);
-        nfs := nfs + BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
-        if f <> 1.0 then begin
-          nf := nfCustom;
-          while (f > 1.0) do
-          begin
-            nfs := nfs + ',';
-            f := f / 1000;
+        if s = '' then
+          s := GetAttrValue(node, 'decimal-places');
+        if s = '' then
+        begin
+          if nfs='' then nf := nfGeneral else nf := nfCustom;
+          nfs := nfs + 'General';
+        end else
+        begin
+          decs := StrToInt(s);
+          grouping := GetAttrValue(node, 'number:grouping') = 'true';
+          s := GetAttrValue(node, 'number:display-factor');
+          if s <> '' then f := StrToFloat(s, FPointSeparatorSettings) else f := 1.0;
+          nf := IfThen(grouping, nfFixedTh, nfFixed);
+          nfs := nfs + BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
+          if f <> 1.0 then begin
+            nf := nfCustom;
+            while (f > 1.0) do
+            begin
+              nfs := nfs + ',';
+              f := f / 1000;
+            end;
           end;
         end;
       end else

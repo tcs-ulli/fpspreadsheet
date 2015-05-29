@@ -440,7 +440,6 @@ end;*)
 procedure TsSpreadBIFF2Reader.ReadFormat(AStream: TStream);
 var
   len: byte;
-  fmtIndex: Integer;
   fmtString: AnsiString;
   nfs: String;
 begin

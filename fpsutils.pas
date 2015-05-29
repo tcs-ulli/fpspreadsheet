@@ -2880,6 +2880,13 @@ begin
 
   el := 0;
   while (el < numEl) do begin
+    if section.Elements[el].Token = nftGeneral then
+    begin
+      s := FloatToStrF(AValue, ffGeneral, 20, 20, fs);
+      if (sidx=0) and isNeg then s := '-' + s;
+      Result := Result + s;
+    end
+    else
     // Integer token: can be the start of a number, exp, or mixed fraction format
     // Cases with thousand separator are handled here as well.
     if section.Elements[el].Token in (INT_TOKENS + [nftIntTh]) then begin
