@@ -1,7 +1,7 @@
 unit fpsNumFormatParser;
 
 {$ifdef fpc}
-  {$mode delphi}{$H+}
+  {$mode objfpc}{$H+}
 {$endif}
 
 interface
@@ -55,7 +55,7 @@ type
 
     { Administration while scanning }
     procedure AddElement(AToken: TsNumFormatToken; AText: String); overload;
-    procedure AddElement(AToken: TsNumFormatToken; AIntValue: Integer=0); overload;
+    procedure AddElement(AToken: TsNumFormatToken; AIntValue: Integer=0; AText: String = ''); overload;
     procedure AddElement(AToken: TsNumFormatToken; AFloatValue: Double); overload;
     procedure AddSection;
     procedure DeleteElement(ASection, AIndex: Integer);
@@ -87,18 +87,9 @@ type
     // General
     procedure CheckSections;
     procedure CheckSection(ASection: Integer);
-    procedure FixMonthMinuteToken(ASection: Integer);
+    procedure FixMonthMinuteToken(var ASection: TsNumFormatSection);
     // Format string
     function BuildFormatString: String; virtual;
-    // Token analysis
-    {
-    function GetTokenIntValueAt(AToken: TsNumFormatToken;
-      ASection,AIndex: Integer): Integer;
-    function IsNumberAt(ASection,AIndex: Integer; out ANumFormat: TsNumberFormat;
-      out ADecimals: Byte; out ANextIndex: Integer): Boolean;
-    function IsTextAt(AText: string; ASection, AIndex: Integer): Boolean;
-    function IsTokenAt(AToken: TsNumFormatToken; ASection,AIndex: Integer): Boolean;
-    }
   public
     constructor Create(AWorkbook: TsWorkbook; const AFormatString: String);
     destructor Destroy; override;
@@ -192,7 +183,8 @@ begin
   FSections[FCurrSection].Elements[n].TextValue := AText;
 end;
 
-procedure TsNumFormatParser.AddElement(AToken: TsNumFormatToken; AIntValue: Integer=0);
+procedure TsNumFormatParser.AddElement(AToken: TsNumFormatToken;
+  AIntValue: Integer=0; AText: String = '');
 var
   n: Integer;
 begin
@@ -200,6 +192,7 @@ begin
   SetLength(FSections[FCurrSection].Elements, n+1);
   FSections[FCurrSection].Elements[n].Token := AToken;
   FSections[FCurrSection].Elements[n].IntValue := AIntValue;
+  FSections[FCurrSection].Elements[n].TextValue := AText;
 end;
 
 procedure TsNumFormatParser.AddElement(AToken: TsNumFormatToken; AFloatValue: Double); overload;
@@ -300,6 +293,7 @@ var
   nfs, nfsTest: String;
   nf: TsNumberFormat;
   formats: set of TsNumberFormat;
+  isMonthMinute: Boolean;
 begin
   if FStatus <> psOK then
     exit;
@@ -308,6 +302,7 @@ begin
   section^.Kind := [];
 
   i := 0;
+  isMonthMinute := false;
 
   for el := 0 to High(section^.Elements) do
     case section^.Elements[el].Token of
@@ -360,6 +355,8 @@ begin
           if section^.Elements[el].IntValue < 0 then
             section^.Kind := section^.Kind + [nfkTimeInterval];
         end;
+      nftMonthMinute:
+        isMonthMinute := true;
       nftColor:
         begin
           section^.Kind := section^.Kind + [nfkHasColor];
@@ -381,9 +378,9 @@ begin
 
   section^.NumFormat := nfCustom;
 
-  if (section^.Kind * [nfkDate, nfkTime] <> []) then
+  if (section^.Kind * [nfkDate, nfkTime] <> []) or isMonthMinute then
   begin
-    FixMonthMinuteToken(ASection);
+    FixMonthMinuteToken(section^);
     nfs := GetFormatString;
     if (nfkTimeInterval in section^.Kind) then
       section^.NumFormat := nfTimeInterval
@@ -540,7 +537,7 @@ begin
 end;
 
 { Identify the ambiguous "m" token ("month" or "minute") }
-procedure TsNumFormatParser.FixMonthMinuteToken(ASection: Integer);
+procedure TsNumFormatParser.FixMonthMinuteToken(var ASection: TsNumFormatSection);
 var
   i, j: Integer;
 
@@ -550,7 +547,7 @@ var
     Result := -1;
     dec(j);
     while (j >= 0) do begin
-      with FSections[ASection].Elements[j] do
+      with ASection.Elements[j] do
         if Token in [nftYear, nftMonth, nftDay, nftHour, nftMinute, nftSecond] then
         begin
           Result := j;
@@ -565,8 +562,8 @@ var
   begin
     Result := -1;
     inc(j);
-    while (j < Length(FSections[ASection].Elements)) do begin
-      with FSections[ASection].Elements[j] do
+    while (j < Length(ASection.Elements)) do begin
+      with ASection.Elements[j] do
         if Token in [nftYear, nftMonth, nftDay, nftHour, nftMinute, nftSecond] then
         begin
           Result := j;
@@ -577,39 +574,46 @@ var
   end;
 
 begin
-  for i:=0 to High(FSections[ASection].Elements) do
+  for i:=0 to High(ASection.Elements) do
+  begin
     // Find index of nftMonthMinute token...
-    if FSections[ASection].Elements[i].Token = nftMonthMinute then begin
+    if ASection.Elements[i].Token = nftMonthMinute then begin
       // ... and, using its neighbors, decide whether it is a month or a minute.
       j := NextDateTimeElement(i);
       if j <> -1 then
-        case FSections[ASection].Elements[j].Token of
+        case ASection.Elements[j].Token of
           nftDay, nftYear:
             begin
-              FSections[ASection].Elements[i].Token := nftMonth;
+              ASection.Elements[i].Token := nftMonth;
               Continue;
             end;
           nftSecond:
             begin
-              FSections[ASection].Elements[i].Token := nftMinute;
+              ASection.Elements[i].Token := nftMinute;
               Continue;
             end;
         end;
       j := PrevDateTimeElement(i);
       if j <> -1 then
-        case FSections[ASection].Elements[j].Token of
+        case ASection.Elements[j].Token of
           nftDay, nftYear:
             begin
-              FSections[ASection].Elements[i].Token := nftMonth;
+              ASection.Elements[i].Token := nftMonth;
               Continue;
             end;
           nftHour:
             begin
-              FSections[ASection].Elements[i].Token := nftMinute;
+              ASection.Elements[i].Token := nftMinute;
               Continue;
             end;
         end;
+
+      // If we get here the token is isolated. In case we assume that it is a
+      // month - that's the way Excel does it.
+      ASection.Elements[i].Token := nftMonth;
+      Include(ASection.Kind, nfkDate);
     end;
+  end;
 end;
 
 procedure TsNumFormatParser.InsertElement(ASection, AIndex: Integer;
@@ -1012,7 +1016,7 @@ procedure TsNumFormatParser.ScanBrackets;
 var
   s: String;
   n: Integer;
-  prevtoken: Char;
+  prevtok: Char;
   isText: Boolean;
 begin
   s := '';
@@ -1025,10 +1029,10 @@ begin
           s := s + FToken
         else
         begin
-          prevtoken := FToken;
+          prevtok := FToken;
           ScanAndCount(FToken, n);
           if (FToken in [']', #0]) then begin
-            case prevtoken of
+            case prevtok of
               'h', 'H'          : AddElement(nftHour, -n);
               'm', 'M', 'n', 'N': AddElement(nftMinute, -n);
               's', 'S'          : AddElement(nftSecond, -n);
@@ -1174,8 +1178,9 @@ begin
         end;
       'm', 'M', 'n', 'N':
         begin
+          token := FToken;
           ScanAndCount(FToken, n);
-          AddElement(nftMonthMinute, n);  // Decide on minute or month later
+          AddElement(nftMonthMinute, n, token);  // Decide on minute or month later
         end;
       'D', 'd':
         begin
