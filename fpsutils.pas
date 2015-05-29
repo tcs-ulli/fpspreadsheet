@@ -2579,15 +2579,14 @@ begin
     AIndex := j;
     if UseThSep then
     begin
-      AIndex := j + 1;
+     // AIndex := j + 1;
       j := Length(Result) - 2;
       while (j > 1) and (Result[j-1] <> ' ') and (Result[j] <> ' ') do
       begin
         Insert(fs.ThousandSeparator, Result, j);
         dec(j, 3);
       end;
-    end else
-      AIndex := j;
+    end;
   end;
 end;
 
@@ -2729,7 +2728,7 @@ begin
       frnum := round(AValue*frdenom);
     end;
     sfrint := ProcessIntegerFormat(IntToStr(frint), fs, AElements, i,
-      INT_TOKENS, false, (AElements[i].Token = nftIntTh));
+      INT_TOKENS + [nftIntTh], false, (AElements[i].Token = nftIntTh));
     while (i < numEl) and (AElements[i].Token in TERMINATING_TOKENS) do
     begin
       sintnumspace := sintnumspace + AElements[i].TextValue;
