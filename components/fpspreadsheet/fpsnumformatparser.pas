@@ -317,6 +317,8 @@ begin
         section^.FracNumerator := section^.Elements[el].IntValue;
       nftFracDenomSpaceDigit, nftFracDenomZeroDigit:
         section^.FracDenominator := section^.Elements[el].IntValue;
+      nftFracDenom:
+        section^.FracDenominator := -section^.Elements[el].IntValue;
       nftPercent:
         section^.Kind := section^.Kind + [nfkPercent];
       nftExpChar:
