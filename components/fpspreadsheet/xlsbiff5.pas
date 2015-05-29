@@ -1200,7 +1200,6 @@ procedure TsSpreadBIFF5Writer.WriteFont(AStream: TStream; AFont: TsFont);
 var
   Len: Byte;
   optn: Word;
-  cidx: Integer;
 begin
   if AFont = nil then  // this happens for FONT4 in case of BIFF
     exit;

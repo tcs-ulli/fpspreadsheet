@@ -23,7 +23,8 @@ const
   psErrMultipleCurrSymbols = 9;
   psErrMultipleFracSymbols = 10;
   psErrMultipleExpChars = 11;
-  psAmbiguousSymbol = 12;
+  psErrGeneralExpected = 12;
+  psAmbiguousSymbol = 13;
 
 type
 
@@ -54,7 +55,7 @@ type
 
     { Administration while scanning }
     procedure AddElement(AToken: TsNumFormatToken; AText: String); overload;
-    procedure AddElement(AToken: TsNumFormatToken; AIntValue: Integer); overload;
+    procedure AddElement(AToken: TsNumFormatToken; AIntValue: Integer=0); overload;
     procedure AddElement(AToken: TsNumFormatToken; AFloatValue: Double); overload;
     procedure AddSection;
     procedure DeleteElement(ASection, AIndex: Integer);
@@ -72,6 +73,7 @@ type
     procedure ScanCurrSymbol;
     procedure ScanDateTime;
     procedure ScanFormat;
+    procedure ScanGeneral;
     procedure ScanNumber;
     procedure ScanQuotedText;
     // Main scanner
@@ -190,7 +192,7 @@ begin
   FSections[FCurrSection].Elements[n].TextValue := AText;
 end;
 
-procedure TsNumFormatParser.AddElement(AToken: TsNumFormatToken; AIntValue: Integer);
+procedure TsNumFormatParser.AddElement(AToken: TsNumFormatToken; AIntValue: Integer=0);
 var
   n: Integer;
 begin
@@ -359,7 +361,10 @@ begin
             section^.Kind := section^.Kind + [nfkTimeInterval];
         end;
       nftColor:
-        section^.Kind := section^.Kind + [nfkHasColor];
+        begin
+          section^.Kind := section^.Kind + [nfkHasColor];
+          section^.Color := section^.Elements[el].IntValue;
+        end;
       nftIntTh:
         section^.Kind := section^.Kind + [nfkHasThSep];
     end;
@@ -932,8 +937,11 @@ begin
   FStatus := psOK;
 
   AddSection;
-  if (AFormatString = '') or SameText(AFormatString, 'General') then
+  if (AFormatString = '') then
+  begin
+    AddElement(nftGeneral);
     exit;
+  end;
 
   FStart := @AFormatString[1];
   FEnd := FStart + Length(AFormatString);
@@ -941,6 +949,7 @@ begin
   FToken := FCurrent^;
   while (FCurrent < FEnd) and (FStatus = psOK) do begin
     case FToken of
+      'G','g': ScanGeneral;
       '[': ScanBrackets;
       '"': ScanQuotedText;
       ':': AddElement(nftDateTimeSep, ':');
@@ -1264,6 +1273,8 @@ begin
           ScanAMPM;
           FToken := PrevToken;
         end;
+      'G', 'g':
+        ScanGeneral;
       ';':  // End of the section. Important: Cursor must stay on ';'
         begin
           AddSection;
@@ -1274,6 +1285,26 @@ begin
     end;
     FToken := NextToken;
   end;
+end;
+
+{ Scans for the word "General", it may be used like other tokens }
+procedure TsNumFormatParser.ScanGeneral;
+begin
+  FStatus := psErrGeneralExpected;
+  FToken := NextToken;
+  if not (FToken in ['e', 'E']) then exit;
+  FToken := NextToken;
+  if not (FToken in ['n', 'N']) then exit;
+  FToken := NextToken;
+  if not (FToken in ['e', 'E']) then exit;
+  FToken := NextToken;
+  if not (FToken in ['r', 'R']) then exit;
+  FToken := NextToken;
+  if not (FToken in ['a', 'A']) then exit;
+  FToken := NextToken;
+  if not (FToken in ['l', 'L']) then exit;
+  AddElement(nftGeneral);
+  FStatus := psOK;
 end;
 
 { Scans a floating point format. Procedure is left with the cursor at the last
@@ -1427,7 +1458,8 @@ begin
                end;
              end;
            end;
-
+      'G', 'g':
+           ScanGeneral;
       else
            FToken := PrevToken;
            Exit;

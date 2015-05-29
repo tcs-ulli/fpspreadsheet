@@ -502,6 +502,7 @@ type
 
   {@@ Tokens used by the elements of the number format parser }
   TsNumFormatToken = (
+    nftGeneral,            // token for "general" number format
     nftText,               // must be quoted, stored in TextValue
     nftThSep,              // ',', replaced by FormatSettings.ThousandSeparator
     nftDecSep,             // '.', replaced by FormatSettings.DecimalSeparator
@@ -970,6 +971,8 @@ begin
   for i := 0 to High(ASection.Elements)  do begin
     element := ASection.Elements[i];
     case element.Token of
+      nftGeneral:
+        Result := Result + 'General';
       nftIntOptDigit, nftOptDecs, nftFracNumOptDigit, nftFracDenomOptDigit:
         if element.IntValue > 0 then
           Result := Result + DupeString('#', element.IntValue);
