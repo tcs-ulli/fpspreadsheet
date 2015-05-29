@@ -1380,7 +1380,7 @@ begin
       begin
         if Workbook.FileFormat = sfExcel2 then
         begin
-          CreateFillPattern(FillPatternBitmap, fsGray50, clBlack, Color);
+          CreateFillPattern(FillPatternBitmap, fsGray12, clBlack, Color);
           Canvas.Brush.Style := bsImage;
           Canvas.Brush.Bitmap := FillPatternBitmap;
         end else
