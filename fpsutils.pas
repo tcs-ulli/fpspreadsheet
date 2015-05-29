@@ -2496,7 +2496,8 @@ end;
 
 { Processes a sequence of #, 0, and ? tokens.
   Adds leading (GrowRight=false) or trailing (GrowRight=true) zeros and/or
-  spaces as specified by the format elements to the number value string. }
+  spaces as specified by the format elements to the number value string.
+  On exit AIndex points to the first non-integer token. }
 function ProcessIntegerFormat(AValue: String; AFormatSettings: TFormatSettings;
   const AElements: TsNumFormatElements; var AIndex: Integer;
   ATokens: TsNumFormatTokenSet; GrowRight, UseThSep: Boolean): String;
@@ -2578,13 +2579,15 @@ begin
     AIndex := j;
     if UseThSep then
     begin
+      AIndex := j + 1;
       j := Length(Result) - 2;
       while (j > 1) and (Result[j-1] <> ' ') and (Result[j] <> ' ') do
       begin
         Insert(fs.ThousandSeparator, Result, j);
         dec(j, 3);
       end;
-    end;
+    end else
+      AIndex := j;
   end;
 end;
 
@@ -2700,17 +2703,13 @@ var
   sfrint, sfrnum, sfrdenom: String;
   sfrsym, sintnumspace, snumsymspace, ssymdenomspace: String;
   i, numEl: Integer;
-  //prec: Double;
 begin
   sintnumspace := '';
   snumsymspace := '';
   ssymdenomspace := '';
   sfrsym := '/';
-  if ADigits >= 0 then begin
+  if ADigits >= 0 then
     maxDenom := Round(IntPower(10, ADigits));
-   // prec := 0.5/maxDenom;
-    //prec := 0.001/maxDenom;
-  end;
   numEl := Length(AElements);
 
   i := AIndex;
@@ -2724,7 +2723,6 @@ begin
       frint := 0;
     if ADigits >= 0 then
       FloatToFraction(AValue, maxdenom, frnum, frdenom)
-//      FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom)
     else
     begin
       frdenom := -ADigits;
@@ -2742,7 +2740,6 @@ begin
     // "normal" fraction
     sfrint := '';
     if ADigits > 0 then
-//      FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom)
       FloatToFraction(AValue, maxdenom, frnum, frdenom)
     else
     begin
