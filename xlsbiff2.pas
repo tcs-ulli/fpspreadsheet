@@ -298,7 +298,7 @@ end;
 procedure TsSpreadBIFF2Reader.AddBuiltInNumFormats;
 begin
   FFirstNumFormatIndexInFile := 0;
-  InternalAddBuiltInNumFormats(FNumFormatList, Workbook.FormatSettings);
+  //InternalAddBuiltInNumFormats(FNumFormatList, Workbook.FormatSettings);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadBlank(AStream: TStream);
@@ -430,12 +430,30 @@ end;
 {@@ ----------------------------------------------------------------------------
   Reads the FORMAT record required for formatting numerical data
 -------------------------------------------------------------------------------}
+(*
 procedure TsSpreadBIFF2Reader.ReadFORMAT(AStream: TStream);
 begin
   Unused(AStream);
   // We ignore the formats in the file, everything is known
   // (Using the formats in the file would require de-localizing them).
+end;*)
+procedure TsSpreadBIFF2Reader.ReadFormat(AStream: TStream);
+var
+  len: byte;
+  fmtIndex: Integer;
+  fmtString: AnsiString;
+  nfs: String;
+begin
+  // number format string
+  len := AStream.ReadByte;
+  SetLength(fmtString, len);
+  AStream.ReadBuffer(fmtString[1], len);
+
+  // Add to the end of the list.
+  nfs := ConvertEncoding(fmtString, FCodePage, encodingUTF8);
+  NumFormatList.Add(nfs);
 end;
+
 
 procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream);
 var
