@@ -616,8 +616,10 @@ begin
             end;
         end;
 
-      // If we get here the token is isolated. In case we assume that it is a
-      // month - that's the way Excel does it.
+      // If we get here the token is isolated. In this case we assume
+      // that it is a month - that's the way Excel does it when reading files
+      // (for editing of a worksheet, however, Excel distinguishes between
+      // uppercase "M" for "month" and lowercase "m" for "minute".)
       ASection.Elements[i].Token := nftMonth;
       Include(ASection.Kind, nfkDate);
     end;
