@@ -934,7 +934,8 @@ begin
     nf := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
     fmt.NumberFormat := nf.NumFormat;
     fmt.NumberFormatStr := nf.NumFormatStr;
-    Include(fmt.UsedFormattingFields, uffNumberFormat);
+    if fmt.NumberFormat <> nfGeneral then
+      Include(fmt.UsedFormattingFields, uffNumberFormat);
   end;
 
   // Horizontal alignment

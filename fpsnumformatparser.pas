@@ -301,6 +301,14 @@ begin
   section := @FSections[ASection];
   section^.Kind := [];
 
+  if (ASection = 0) and (Length(FSections) = 1) and (Length(section^.Elements) = 1)
+    and (section^.Elements[0].Token = nftGeneral)
+  then begin
+    section^.NumFormat := nfGeneral;
+    exit;
+  end;
+
+
   i := 0;
   isMonthMinute := false;
 
