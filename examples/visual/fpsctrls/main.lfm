@@ -13,7 +13,7 @@ object MainForm: TMainForm
     Left = 0
     Height = 518
     Top = 83
-    Width = 682
+    Width = 654
     TabIndex = 0
     Tabs.Strings = (
       'Sheet1'
@@ -25,7 +25,7 @@ object MainForm: TMainForm
       Left = 2
       Height = 493
       Top = 23
-      Width = 678
+      Width = 650
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = False
@@ -50,10 +50,10 @@ object MainForm: TMainForm
     end
   end
   object InspectorTabControl: TTabControl
-    Left = 687
+    Left = 659
     Height = 518
     Top = 83
-    Width = 253
+    Width = 281
     OnChange = InspectorTabControlChange
     TabIndex = 0
     Tabs.Strings = (
@@ -69,8 +69,9 @@ object MainForm: TMainForm
       Left = 2
       Height = 493
       Top = 23
-      Width = 249
+      Width = 277
       Align = alClient
+      MouseWheelOption = mwGrid
       RowCount = 30
       TabOrder = 1
       TitleStyle = tsNative
@@ -120,7 +121,7 @@ object MainForm: TMainForm
     end
   end
   object InspectorSplitter: TSplitter
-    Left = 682
+    Left = 654
     Height = 518
     Top = 83
     Width = 5

@@ -434,6 +434,8 @@ type
     property DisplayOptions default [doColumnTitles, doAutoColResize];
     {@@ inherited from TValueListEditor. Turns of the fixed column by default}
     property FixedCols default 0;
+    {@@ inherited from TStringGrid, but not published in TValueListEditor. }
+    property ExtendedColSizing;
   end;
 
 var
