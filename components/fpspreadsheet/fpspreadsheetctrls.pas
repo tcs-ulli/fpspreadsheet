@@ -395,6 +395,10 @@ type
     can be assigned to a tab of a TabControl. }
   TsInspectorMode = (imWorkbook, imWorksheet, imCellValue, imCellProperties);
 
+  {@@ Inspector expanded nodes }
+  TsInspectorExpandedNode = (ienFormatSettings, ienPageLayout);
+  TsInspectorExpandedNodes = set of TsInspectorExpandedNode;
+
   {@@ TsSpreadsheetInspector displays all properties of a workbook, worksheet,
     cell content and cell formatting in a way similar to the Object Inspector
     of Lazarus. }
@@ -402,11 +406,14 @@ type
   private
     FWorkbookSource: TsWorkbookSource;
     FMode: TsInspectorMode;
+    FExpanded: TsInspectorExpandedNodes;
     function GetWorkbook: TsWorkbook;
     function GetWorksheet: TsWorksheet;
+    procedure SetExpanded(AValue: TsInspectorExpandedNodes);
     procedure SetMode(AValue: TsInspectorMode);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
   protected
+    procedure DblClick; override;
     procedure DoUpdate; virtual;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure UpdateCellValue(ACell: PCell; AStrings: TStrings); virtual;
@@ -432,6 +439,9 @@ type
     {@@ inherited from TValueListEditor, activates column titles and automatic
       column width adjustment by default }
     property DisplayOptions default [doColumnTitles, doAutoColResize];
+    {@@ Displays subproperties }
+    property ExpandedNodes: TsInspectorExpandedNodes
+      read FExpanded write SetExpanded default [ienFormatSettings, ienPageLayout];
     {@@ inherited from TValueListEditor. Turns of the fixed column by default}
     property FixedCols default 0;
     {@@ inherited from TStringGrid, but not published in TValueListEditor. }
@@ -2457,6 +2467,7 @@ begin
   inherited Create(AOwner);
   DisplayOptions := DisplayOptions - [doKeyColFixed];
   FixedCols := 0;
+  FExpanded := [ienFormatSettings, ienPageLayout];
   with (TitleCaptions as TStringList) do begin
     OnChange := nil;        // This fixes an issue with Laz 1.0
     Clear;
@@ -2474,6 +2485,32 @@ destructor TsSpreadsheetInspector.Destroy;
 begin
   if FWorkbookSource <> nil then FWorkbookSource.RemoveListener(self);
   inherited Destroy;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Double-click on an expandable line expands or collapsed the sub-items
+-------------------------------------------------------------------------------}
+procedure TsSpreadsheetInspector.DblClick;
+var
+  s: String;
+  expNodes: TsInspectorExpandedNodes;
+begin
+  expNodes := FExpanded;
+  s := Cells[0, Row];
+  if (pos('FormatSettings', s) > 0) or (pos('Format settings', s) > 0) then
+  begin
+    if (ienFormatSettings in expNodes)
+      then Exclude(expNodes, ienFormatSettings)
+      else Include(expNodes, ienFormatSettings);
+  end else
+  if (pos('Page layout', s) > 0) or (pos('PageLayout', s) > 0) then
+  begin
+    if (ienPageLayout in expNodes)
+      then Exclude(expNodes, ienPageLayout)
+      else Include(expNodes, ienPageLayout);
+  end else
+    exit;
+  SetExpanded(expNodes);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2578,6 +2615,17 @@ end;
 procedure TsSpreadsheetInspector.RemoveWorkbookSource;
 begin
   SetWorkbookSource(nil);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Setter method for the Expanded property
+-------------------------------------------------------------------------------}
+procedure TsSpreadsheetInspector.SetExpanded(AValue: TsInspectorExpandedNodes);
+begin
+  if AValue = FExpanded then
+    exit;
+  FExpanded := AValue;
+  DoUpdate;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2835,38 +2883,41 @@ begin
     if s <> '' then Delete(s, 1, 2);
     AStrings.Add('Options='+s);
 
-    AStrings.Add('FormatSettings=');
-    AStrings.Add('  ThousandSeparator='+AWorkbook.FormatSettings.ThousandSeparator);
-    AStrings.Add('  DecimalSeparator='+AWorkbook.FormatSettings.DecimalSeparator);
-    AStrings.Add('  ListSeparator='+AWorkbook.FormatSettings.ListSeparator);
-    AStrings.Add('  DateSeparator='+AWorkbook.FormatSettings.DateSeparator);
-    AStrings.Add('  TimeSeparator='+AWorkbook.FormatSettings.TimeSeparator);
-    AStrings.Add('  ShortDateFormat='+AWorkbook.FormatSettings.ShortDateFormat);
-    AStrings.Add('  LongDateFormat='+AWorkbook.FormatSettings.LongDateFormat);
-    AStrings.Add('  ShortTimeFormat='+AWorkbook.FormatSettings.ShortTimeFormat);
-    AStrings.Add('  LongTimeFormat='+AWorkbook.FormatSettings.LongTimeFormat);
-    AStrings.Add('  TimeAMString='+AWorkbook.FormatSettings.TimeAMString);
-    AStrings.Add('  TimePMString='+AWorkbook.FormatSettings.TimePMString);
-    s := AWorkbook.FormatSettings.ShortMonthNames[1];
-    for i:=2 to 12 do
-      s := s + ', ' + AWorkbook.FormatSettings.ShortMonthNames[i];
-    AStrings.Add('  ShortMonthNames='+s);
-    s := AWorkbook.FormatSettings.LongMonthnames[1];
-    for i:=2 to 12 do
-      s := s +', ' + AWorkbook.FormatSettings.LongMonthNames[i];
-    AStrings.Add('  LongMontNames='+s);
-    s := AWorkbook.FormatSettings.ShortDayNames[1];
-    for i:=2 to 7 do
-      s := s + ', ' + AWorkbook.FormatSettings.ShortDayNames[i];
-    AStrings.Add('  ShortMonthNames='+s);
-    s := AWorkbook.FormatSettings.LongDayNames[1];
-    for i:=2 to 7 do
-      s := s +', ' + AWorkbook.FormatSettings.LongDayNames[i];
-    AStrings.Add('  LongMontNames='+s);
-    AStrings.Add('  CurrencyString='+AWorkbook.FormatSettings.CurrencyString);
-    AStrings.Add('  PosCurrencyFormat='+IntToStr(AWorkbook.FormatSettings.CurrencyFormat));
-    AStrings.Add('  NegCurrencyFormat='+IntToStr(AWorkbook.FormatSettings.NegCurrFormat));
-    AStrings.Add('  TwoDigitYearCenturyWindow='+IntToStr(AWorkbook.FormatSettings.TwoDigitYearCenturyWindow));
+    if (ienFormatSettings in FExpanded) then begin
+      AStrings.Add('(-) FormatSettings=');
+      AStrings.Add('  ThousandSeparator='+AWorkbook.FormatSettings.ThousandSeparator);
+      AStrings.Add('  DecimalSeparator='+AWorkbook.FormatSettings.DecimalSeparator);
+      AStrings.Add('  ListSeparator='+AWorkbook.FormatSettings.ListSeparator);
+      AStrings.Add('  DateSeparator='+AWorkbook.FormatSettings.DateSeparator);
+      AStrings.Add('  TimeSeparator='+AWorkbook.FormatSettings.TimeSeparator);
+      AStrings.Add('  ShortDateFormat='+AWorkbook.FormatSettings.ShortDateFormat);
+      AStrings.Add('  LongDateFormat='+AWorkbook.FormatSettings.LongDateFormat);
+      AStrings.Add('  ShortTimeFormat='+AWorkbook.FormatSettings.ShortTimeFormat);
+      AStrings.Add('  LongTimeFormat='+AWorkbook.FormatSettings.LongTimeFormat);
+      AStrings.Add('  TimeAMString='+AWorkbook.FormatSettings.TimeAMString);
+      AStrings.Add('  TimePMString='+AWorkbook.FormatSettings.TimePMString);
+      s := AWorkbook.FormatSettings.ShortMonthNames[1];
+      for i:=2 to 12 do
+        s := s + ', ' + AWorkbook.FormatSettings.ShortMonthNames[i];
+      AStrings.Add('  ShortMonthNames='+s);
+      s := AWorkbook.FormatSettings.LongMonthnames[1];
+      for i:=2 to 12 do
+        s := s +', ' + AWorkbook.FormatSettings.LongMonthNames[i];
+      AStrings.Add('  LongMontNames='+s);
+      s := AWorkbook.FormatSettings.ShortDayNames[1];
+      for i:=2 to 7 do
+        s := s + ', ' + AWorkbook.FormatSettings.ShortDayNames[i];
+      AStrings.Add('  ShortMonthNames='+s);
+      s := AWorkbook.FormatSettings.LongDayNames[1];
+      for i:=2 to 7 do
+        s := s +', ' + AWorkbook.FormatSettings.LongDayNames[i];
+      AStrings.Add('  LongMontNames='+s);
+      AStrings.Add('  CurrencyString='+AWorkbook.FormatSettings.CurrencyString);
+      AStrings.Add('  PosCurrencyFormat='+IntToStr(AWorkbook.FormatSettings.CurrencyFormat));
+      AStrings.Add('  NegCurrencyFormat='+IntToStr(AWorkbook.FormatSettings.NegCurrFormat));
+      AStrings.Add('  TwoDigitYearCenturyWindow='+IntToStr(AWorkbook.FormatSettings.TwoDigitYearCenturyWindow));
+    end else
+      AStrings.Add('(+) FormatSettings=(dblclick for more...)');
 
     for i:=0 to AWorkbook.GetFontCount-1 do
       AStrings.Add(Format('Font%d=%s', [i, AWorkbook.GetFontAsString(i)]));
@@ -2912,40 +2963,44 @@ begin
     AStrings.Add(Format('Comments=%d items', [ASheet.Comments.Count]));
     AStrings.Add(Format('Hyperlinks=%d items', [ASheet.Hyperlinks.Count]));
     AStrings.Add(Format('MergedCells=%d items', [ASheet.MergedCells.Count]));
-    AStrings.Add('Page layout=');
-    AStrings.Add(Format('  Orientation=%s', [GetEnumName(TypeInfo(TsPageOrientation), ord(ASheet.PageLayout.Orientation))]));
-    AStrings.Add(Format('  Page width=%.1f mm', [ASheet.PageLayout.PageWidth]));
-    AStrings.Add(Format('  Page height=%.1f mm', [ASheet.PageLayout.PageHeight]));
-    AStrings.Add(Format('  Left margin=%.1f mm', [ASheet.PageLayout.LeftMargin]));
-    AStrings.Add(Format('  Right margin=%.1f mm', [ASheet.PageLayout.RightMargin]));
-    AStrings.Add(Format('  Top margin=%.1f mm', [ASheet.PageLayout.TopMargin]));
-    AStrings.Add(Format('  Bottom margin=%.1f mm', [ASheet.PageLayout.BottomMargin]));
-    AStrings.Add(Format('  Header distance=%.1f mm', [ASheet.PageLayout.HeaderMargin]));
-    AStrings.Add(Format('  Footer distance=%.1f mm', [ASheet.PageLayout.FooterMargin]));
-    if poUseStartPageNumber in ASheet.PageLayout.Options then
-      AStrings.Add(Format('  Start page number=%d', [ASheet.pageLayout.StartPageNumber]))
-    else
-      AStrings.Add     ('  Start page number=automatic');
-    AStrings.Add(Format('  Scaling factor=%d%%', [ASheet.PageLayout.ScalingFactor]));
-    AStrings.Add(Format('  Copies=%d', [ASheet.PageLayout.Copies]));
-    if (ASheet.PageLayout.Options * [poDifferentOddEven, poDifferentFirst] <> []) then
+    if ienPageLayout in FExpanded then
     begin
-      AStrings.Add(Format('  Header (first)=%s', [StringReplace(ASheet.PageLayout.Headers[0], LineEnding, '\n', [rfReplaceAll])]));
-      AStrings.Add(Format('  Header (odd)=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]));
-      AStrings.Add(Format('  Header (even)=%s', [StringReplace(ASheet.PageLayout.Headers[2], LineEnding, '\n', [rfReplaceAll])]));
-      AStrings.Add(Format('  Footer (first)=%s', [StringReplace(ASheet.PageLayout.Footers[0], LineEnding, '\n', [rfReplaceAll])]));
-      AStrings.Add(Format('  Footer (odd)=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceall])]));
-      AStrings.Add(Format('  Footer (even)=%s', [StringReplace(ASheet.PageLayout.Footers[2], LineEnding, '\n', [rfReplaceAll])]));
+      AStrings.Add('(+) Page layout=');
+      AStrings.Add(Format('  Orientation=%s', [GetEnumName(TypeInfo(TsPageOrientation), ord(ASheet.PageLayout.Orientation))]));
+      AStrings.Add(Format('  Page width=%.1f mm', [ASheet.PageLayout.PageWidth]));
+      AStrings.Add(Format('  Page height=%.1f mm', [ASheet.PageLayout.PageHeight]));
+      AStrings.Add(Format('  Left margin=%.1f mm', [ASheet.PageLayout.LeftMargin]));
+      AStrings.Add(Format('  Right margin=%.1f mm', [ASheet.PageLayout.RightMargin]));
+      AStrings.Add(Format('  Top margin=%.1f mm', [ASheet.PageLayout.TopMargin]));
+      AStrings.Add(Format('  Bottom margin=%.1f mm', [ASheet.PageLayout.BottomMargin]));
+      AStrings.Add(Format('  Header distance=%.1f mm', [ASheet.PageLayout.HeaderMargin]));
+      AStrings.Add(Format('  Footer distance=%.1f mm', [ASheet.PageLayout.FooterMargin]));
+      if poUseStartPageNumber in ASheet.PageLayout.Options then
+        AStrings.Add(Format('  Start page number=%d', [ASheet.pageLayout.StartPageNumber]))
+      else
+        AStrings.Add     ('  Start page number=automatic');
+      AStrings.Add(Format('  Scaling factor=%d%%', [ASheet.PageLayout.ScalingFactor]));
+      AStrings.Add(Format('  Copies=%d', [ASheet.PageLayout.Copies]));
+      if (ASheet.PageLayout.Options * [poDifferentOddEven, poDifferentFirst] <> []) then
+      begin
+        AStrings.Add(Format('  Header (first)=%s', [StringReplace(ASheet.PageLayout.Headers[0], LineEnding, '\n', [rfReplaceAll])]));
+        AStrings.Add(Format('  Header (odd)=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]));
+        AStrings.Add(Format('  Header (even)=%s', [StringReplace(ASheet.PageLayout.Headers[2], LineEnding, '\n', [rfReplaceAll])]));
+        AStrings.Add(Format('  Footer (first)=%s', [StringReplace(ASheet.PageLayout.Footers[0], LineEnding, '\n', [rfReplaceAll])]));
+        AStrings.Add(Format('  Footer (odd)=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceall])]));
+        AStrings.Add(Format('  Footer (even)=%s', [StringReplace(ASheet.PageLayout.Footers[2], LineEnding, '\n', [rfReplaceAll])]));
+      end else
+      begin
+        AStrings.Add(Format('  Header=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]));
+        AStrings.Add(Format('  Footer=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceAll])]));
+      end;
+      s := '';
+      for po in TsPrintOption do
+        if po in ASheet.PageLayout.Options then s := s + '; ' + GetEnumName(typeInfo(TsPrintOption), ord(po));
+      if s <> '' then Delete(s, 1, 2);
+      AStrings.Add(Format('  Options=%s', [s]));
     end else
-    begin
-      AStrings.Add(Format('  Header=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]));
-      AStrings.Add(Format('  Footer=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceAll])]));
-    end;
-    s := '';
-    for po in TsPrintOption do
-      if po in ASheet.PageLayout.Options then s := s + '; ' + GetEnumName(typeInfo(TsPrintOption), ord(po));
-    if s <> '' then Delete(s, 1, 2);
-    AStrings.Add(Format('  Options=%s', [s]));
+      AStrings.Add('(+) Page layout=(dblclick for more...)');
   end;
 end;
 
