@@ -894,7 +894,6 @@ var
   numFmtParams: TsNumFormatParams;
   nfs: String;
   font: TsFont;
-  cb: TsCellBorder;
 begin
   Assert(AFromCell <> nil);
   Assert(AToCell <> nil);

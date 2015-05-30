@@ -94,6 +94,8 @@ begin
 
   SetLength(FColors, Length(FColors) + 1);
   FColors[High(FColors)] := AColor;
+
+  Result := High(FColors);
 end;
 
 {@@ ----------------------------------------------------------------------------

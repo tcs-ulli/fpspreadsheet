@@ -84,6 +84,8 @@ type
     FSheetIndex: Integer;  // Index of worksheet to be written
     procedure GetCellAttributes(ACell: PCell; XFIndex: Word;
       out Attrib1, Attrib2, Attrib3: Byte);
+    procedure GetFormatAndFontIndex(AFormatRecord: PsCellFormat;
+      out AFormatIndex, AFontIndex: Integer);
     { Record writing methods }
     procedure WriteBOF(AStream: TStream);
     procedure WriteCellFormatting(AStream: TStream; ACell: PCell; XFIndex: Word);
@@ -93,11 +95,10 @@ type
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFontIndex: Integer);
     procedure WriteFonts(AStream: TStream);
-    procedure WriteFormatCount(AStream: TStream);
     procedure WriteIXFE(AStream: TStream; XFIndex: Word);
   protected
     procedure AddBuiltinNumFormats; override;
-    procedure ListAllNumFormats; override;
+//    procedure ListAllNumFormats; override;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
@@ -105,12 +106,13 @@ type
     procedure WriteCodePage(AStream: TStream; ACodePage: String); override;
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
+    procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
+      AFormatIndex: Integer); override;
+    procedure WriteFORMATCOUNT(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); override;
-    procedure WriteNumFormat(AStream: TStream; ANumFormatStr: String;
-      AFormatIndex: Integer); override;
     procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
@@ -159,7 +161,7 @@ var
 implementation
 
 uses
-  Math, fpsStrings, fpsReaderWriter, fpsPalette;
+  Math, fpsStrings, fpsReaderWriter, fpsPalette, fpsNumFormatParser;
 
 const
   { Excel record IDs }
@@ -269,9 +271,9 @@ begin
     Add(BuildCurrencyFormatString(nfCurrencyRed, fs, 0, fs.CurrencyFormat, fs.NegCurrFormat, cs));  // 6
     Add(BuildCurrencyFormatString(nfCurrency, fs, 2, fs.CurrencyFormat, fs.NegCurrFormat, cs));     // 7
     Add(BuildCurrencyFormatString(nfCurrencyRed, fs, 2, fs.CurrencyFormat, fs.NegCurrFormat, cs));  // 8
-    Add('0%');                // 9
-    Add('0.00%');             // 10
-    Add('0.00E+00');          // 11
+    Add('0%');        // 9
+    Add('0.00%');     // 10
+    Add('0.00E+00');  // 11
     Add(BuildDateTimeFormatString(nfShortDate, fs));     // 12
     Add(BuildDateTimeFormatString(nfLongDate, fs));      // 13
     Add(BuildDateTimeFormatString(nfDayMonth, fs));      // 14: 'd/mmm'
@@ -442,14 +444,27 @@ var
   len: byte;
   fmtString: AnsiString;
   nfs: String;
+  parser: TsNumFormatParser;
 begin
   // number format string
   len := AStream.ReadByte;
   SetLength(fmtString, len);
   AStream.ReadBuffer(fmtString[1], len);
 
-  // Add to the end of the list.
+  // We need the format string as utf8 and non-localized
   nfs := ConvertEncoding(fmtString, FCodePage, encodingUTF8);
+  {
+  if not SameText(nfs, 'General') then
+  begin
+    parser := TsNumFormatParser.Create(FWorkbook, nfs, true);
+    try
+      nfs := parser.FormatString;
+    finally
+      parser.Free;
+    end;
+  end;
+   }
+  // Add to the end of the list.
   NumFormatList.Add(nfs);
 end;
 
@@ -1016,6 +1031,7 @@ procedure TsSpreadBIFF2Writer.GetCellAttributes(ACell: PCell; XFIndex: Word;
   out Attrib1, Attrib2, Attrib3: Byte);
 var
   fmt: PsCellFormat;
+  fontIdx, formatIdx: Integer;
 begin
   fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
 
@@ -1035,7 +1051,9 @@ begin
   // 2nd byte:
   //   Mask $3F: Index to FORMAT record ("FORMAT" = number format!)
   //   Mask $C0: Index to FONT record
-  Attrib2 := fmt^.FontIndex shr 6;
+  GetFormatAndFontIndex(fmt, formatIdx, fontIdx);
+  Attrib2 := formatIdx + fontIdx shr 6;
+//  Attrib2 := fmt^.FontIndex shr 6;
 
   // 3rd byte
   //   Mask $07: horizontal alignment
@@ -1057,6 +1075,32 @@ begin
     Attrib3 := Attrib3 or $80;
 end;
 
+procedure TsSpreadBIFF2Writer.GetFormatAndFontIndex(AFormatRecord: PsCellFormat;
+  out AFormatIndex, AFontIndex: Integer);
+var
+  nfparams: TsNumFormatParams;
+  nfs: String;
+begin
+  { Index to FORMAT record }
+  AFormatIndex := 0;
+  if (AFormatRecord <> nil) and (uffNumberFormat in AFormatRecord^.UsedFormattingFields) then
+  begin
+    nfParams := Workbook.GetNumberFormat(AFormatRecord^.NumberFormatIndex);
+    nfs := nfParams.NumFormatStr;
+    AFormatIndex := NumFormatList.IndexOf(nfs);
+    if AFormatIndex = -1 then AFormatIndex := 0;
+  end;
+
+  { Index to FONT record }
+  AFontIndex := 0;
+  if (AFormatRecord <> nil) and (uffFont in AFormatRecord^.UsedFormattingFields) then
+  begin
+    AFontIndex := AFormatRecord^.FontIndex;
+    if AFontIndex >= 4 then inc(AFontIndex);  // Font #4 does not exist in BIFF
+  end;
+end;
+
+                   (*
 {@@ ----------------------------------------------------------------------------
   Builds up the list of number formats to be written to the biff2 file.
   Unlike biff5+ no formats are added here because biff2 supports only 21
@@ -1067,7 +1111,7 @@ procedure TsSpreadBIFF2Writer.ListAllNumFormats;
 begin
   // Nothing to do here.
 end;
-
+                 *)
 {@@ ----------------------------------------------------------------------------
   Attaches cell formatting data for the given cell to the current record.
   Is called from all writing methods of cell contents.
@@ -1374,23 +1418,18 @@ var
   b: Byte;
   j: Integer;
   nfParams: TsNumFormatParams;
+  nfs: String;
+  formatIdx, fontIdx: Integer;
 begin
   Unused(XFType_Prot);
+  GetFormatAndFontIndex(AFormatRecord, formatIdx, fontIdx);
 
   { BIFF Record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_XF);
   rec.RecordSize := WordToLE(SizeOf(TBIFF2_XFRecord) - 2*SizeOf(word));
 
   { Index to FONT record }
-  rec.FontIndex := 0;
-  if (AFormatRecord <> nil) then
-  begin
-    if (uffFont in AFormatRecord^.UsedFormattingFields) then
-    begin
-      rec.FontIndex := AFormatRecord^.FontIndex;
-      if rec.FontIndex >= 4 then inc(rec.FontIndex);  // Font #4 does not exist in BIFF
-    end;
-  end;
+  rec.FontIndex := WordToLE(fontIdx);
 
   { Not used byte }
   rec.NotUsed := 0;
@@ -1401,55 +1440,8 @@ begin
       5-0   $3F   Index to (number) FORMAT record
        6    $40   1 = Cell is locked
        7    $80   1 = Formula is hidden }
-  rec.NumFormatIndex_Flags := 0;
-  if (AFormatRecord <> nil) and (uffNumberFormat in AFormatRecord^.UsedFormattingFields) then
-  begin
-    nfParams := Workbook.GetNumberFormat(AFormatRecord^.NumberFormatIndex);
-    if nfParams <> nil then
-      case nfParams.NumFormat of
-        nfGeneral:
-          j := 0;
-        nfFixed:
-          j := IfThen(nfParams.Sections[0].Decimals = 0, 1, 2);
-        nfFixedTh:
-          j := IfThen(nfParams.Sections[0].Decimals = 0, 3, 4);
-        nfCurrency:
-          j := IfThen(nfParams.Sections[0].Decimals = 0, 5, 7);
-        nfCurrencyRed:
-          j := IfThen(nfParams.Sections[0].Decimals = 0, 6, 8);
-        nfPercentage:
-          j := IfThen(nfParams.Sections[0].Decimals = 0, 9, 10);
-        nfExp:
-          j := 11;
-        nfShortDate:
-          j := 12;
-        nfLongDate:
-          j := 13;
-        nfDayMonth:
-          j := 14;
-        nfMonthYear:
-          j := 15;
-        nfShortTimeAM:
-          j := 16;
-        nfLongTimeAM:
-          j := 17;
-        nfShortTime:
-          j := 18;
-        nfLongTime:
-          j := 19;
-        nfShortDateTime:
-          j := 20;
-        // Not available in BIFF2
-        nfFraction:
-          j := 0;
-        nfTimeInterval:
-          j := 19;
-        nfCustom:
-          j := 0;
-      end;
-    rec.NumFormatIndex_Flags := j;
-    // Cell flags not used, so far...
-  end;
+  rec.NumFormatIndex_Flags := WordToLE(formatIdx);
+  // Cell flags not used, so far...
 
   {Horizontal alignment, border style, and background
   Bit  Mask  Contents
@@ -1573,7 +1565,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Writes an Excel 2 FORMAT record which describes formatting of numerical data.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBiff2Writer.WriteNumFormat(AStream: TStream;
+procedure TsSpreadBiff2Writer.WriteFORMAT(AStream: TStream;
   ANumFormatStr: String; AFormatIndex: Integer);
 type
   TNumFormatRecord = packed record
@@ -1586,13 +1578,25 @@ var
   s: ansistring;
   rec: TNumFormatRecord;
   buf: array of byte;
+  parser: TsNumFormatParser;
 begin
-  Unused(ANumFormatStr);
+  //Unused(ANumFormatStr);
 
-  if (AFormatIndex = 0) then
+  {if (AFormatIndex = 0) then
     s := 'General'
-  else
-    s := ConvertEncoding(NumFormatList[AFormatIndex], encodingUTF8, FCodePage);
+  else begin
+    parser := TsNumFormatParser.Create(FWorkbook, NumFormatList[AFormatIndex]);
+    try
+      parser.Localize;
+      s := parser.FormatString;
+      s := ConvertEncoding(s, encodingUTF8, FCodePage);
+    finally
+      parser.Free;
+    end;
+  end;
+  }
+//  s := ConvertEncoding(NumFormatList[AFormatIndex], encodingUTF8, FCodePage);
+  s := ConvertEncoding(ANumFormatStr, encodingUTF8, FCodePage);
   len := Length(s);
 
   { BIFF record header }
@@ -1608,7 +1612,7 @@ begin
   Move(s[1], buf[SizeOf(rec)], len*SizeOf(ansiChar));
 
   { Write out }
-  AStream.WriteBuffer(buf[0], SizeOf(Rec) + SizeOf(ansiChar)*len);
+  AStream.WriteBuffer(buf[0], SizeOf(rec) + SizeOf(ansiChar)*len);
 
   { Clean up }
   SetLength(buf, 0);
@@ -1616,12 +1620,15 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Writes the number of FORMAT records contained in the file.
-  Excel 2 supports only 21 FORMAT records.
+
+  There are 21 built-in formats. The file may contain more, but Excel
+  expects a "21" here...
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF2Writer.WriteFormatCount(AStream: TStream);
+procedure TsSpreadBIFF2Writer.WriteFORMATCOUNT(AStream: TStream);
 begin
   WriteBiffHeader(AStream, INT_EXCEL_ID_FORMATCOUNT, 2);
-  AStream.WriteWord(WordToLE(21)); // there are 21 built-in formats
+  AStream.WriteWord(WordToLE(21));
+//  AStream.WriteWord(WordToLE(NumFormatList.Count));
 end;
 
 {@@ ----------------------------------------------------------------------------

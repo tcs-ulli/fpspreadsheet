@@ -991,10 +991,8 @@ begin
           2: Result := Result + '#,#00';
           3: Result := Result + '#,000';
         end;
-      nftDecSep:
-        Result := Result + '.';
-      nftThSep:
-        Result := Result + ',';
+      nftDecSep, nftThSep:
+        Result := Result + element.TextValue;
       nftFracSymbol:
         Result := Result + '/';
       nftPercent:
@@ -1005,7 +1003,7 @@ begin
           n := element.IntValue;
           while (n > 0) do
           begin
-            Result := Result + ',';
+            Result := Result + element.TextValue;
             dec(n);
           end;
         end;

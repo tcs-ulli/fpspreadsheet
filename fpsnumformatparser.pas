@@ -90,6 +90,7 @@ type
     procedure FixMonthMinuteToken(var ASection: TsNumFormatSection);
     // Format string
     function BuildFormatString: String; virtual;
+
   public
     constructor Create(AWorkbook: TsWorkbook; const AFormatString: String);
     destructor Destroy; override;
@@ -155,8 +156,13 @@ end;
 
 { TsNumFormatParser }
 
-{@@ Creates a number format parser for analyzing a formatstring that has been
-  read from a spreadsheet file. }
+{@@ ----------------------------------------------------------------------------
+  Creates a number format parser for analyzing a formatstring that has been
+  read from a spreadsheet file.
+
+  If ALocalized is true then the formatstring contains localized decimal
+  separator etc.
+-------------------------------------------------------------------------------}
 constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
   const AFormatString: String);
 begin
@@ -1331,9 +1337,11 @@ var
   n, m: Integer;
   el: Integer;
   savedCurrent: PChar;
+  thSep: Char;
 begin
   hasDecSep := false;
   isFrac := false;
+  thSep := ',';
   while (FCurrent < FEnd) and (FStatus = psOK) do begin
     case FToken of
       ',': AddElement(nftThSep, ',');
@@ -1344,7 +1352,7 @@ begin
       '#': begin
              ScanAndCount('#', n);
              savedCurrent := FCurrent;
-             if not (hasDecSep or isFrac) and (n = 1) and (FToken = ',') then
+             if not (hasDecSep or isFrac) and (n = 1) and (FToken = thSep) then
              begin
                m := 0;
                FToken := NextToken;
@@ -1352,34 +1360,34 @@ begin
                case n of
                  0: begin
                       ScanAndCount('0', n);
-                      ScanAndCount(',', m);
+                      ScanAndCount(thSep, m);
                       FToken := prevToken;
                       if n = 3 then
-                        AddElement(nftIntTh, 3)
+                        AddElement(nftIntTh, 3, ',')
                       else
                         FCurrent := savedCurrent;
                     end;
                  1: begin
                       ScanAndCount('0', n);
-                      ScanAndCount(',', m);
+                      ScanAndCount(thSep, m);
                       FToken := prevToken;
                       if n = 2 then
-                        AddElement(nftIntTh, 2)
+                        AddElement(nftIntTh, 2, ',')
                       else
                         FCurrent := savedCurrent;
                     end;
                  2: begin
                       ScanAndCount('0', n);
-                      ScanAndCount(',', m);
+                      ScanAndCount(thSep, m);
                       FToken := prevToken;
                       if (n = 1) then
-                        AddElement(nftIntTh, 1)
+                        AddElement(nftIntTh, 1, ',')
                       else
                         FCurrent := savedCurrent;
                     end;
                end;
                if m > 0 then
-                 AddElement(nftFactor, m);
+                 AddElement(nftFactor, m, thSep);
              end else
              begin
                FToken := PrevToken;
@@ -1394,7 +1402,7 @@ begin
            end;
       '0': begin
              ScanAndCount('0', n);
-             ScanAndCount(',', m);
+             ScanAndCount(thSep, m);
              FToken := PrevToken;
              if hasDecSep then
                AddElement(nftZeroDecs, n)
@@ -1404,14 +1412,14 @@ begin
              else
                AddElement(nftIntZeroDigit, n);
              if m > 0 then
-               AddElement(nftFactor, m);
+               AddElement(nftFactor, m, thSep);
            end;
       '1'..'9':
            begin
              if isFrac then
              begin
                n := 0;
-               while (FToken in ['1'..'9','0']) do //and (FToken <= FEnd) do
+               while (FToken in ['1'..'9','0']) do
                begin
                  n := n*10 + StrToInt(FToken);
                  FToken := nextToken;

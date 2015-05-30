@@ -106,11 +106,11 @@ type
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TsFont);
     procedure WriteFonts(AStream: TStream);
+    procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
+      ANumFormatIndex: Integer); override;
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
-    procedure WriteNumFormat(AStream: TStream; ANumFormatStr: String;
-      ANumFormatIndex: Integer); override;
     procedure WriteStringRecord(AStream: TStream; AString: String); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
@@ -1272,7 +1272,7 @@ end;
   Writes an Excel 5 FORMAT record which is needed for formatting of numerical
   data.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBiff5Writer.WriteNumFormat(AStream: TStream;
+procedure TsSpreadBiff5Writer.WriteFORMAT(AStream: TStream;
   ANumFormatStr: String; ANumFormatIndex: Integer);
 type
   TNumFormatRecord = packed record

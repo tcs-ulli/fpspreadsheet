@@ -132,6 +132,8 @@ type
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TsFont);
     procedure WriteFonts(AStream: TStream);
+    procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
+      ANumFormatIndex: Integer); override;
     procedure WriteHeaderFooter(AStream: TStream; AIsHeader: Boolean); override;
     procedure WriteHyperlink(AStream: TStream; AHyperlink: PsHyperlink;
       AWorksheet: TsWorksheet);
@@ -147,8 +149,6 @@ type
     procedure WriteMSODrawing2_Data(AStream: TStream; AComment: PsComment; AShapeID: Word);
     procedure WriteMSODrawing3(AStream: TStream);
     procedure WriteNOTE(AStream: TStream; AComment: PsComment; AObjID: Word);
-    procedure WriteNumFormat(AStream: TStream; ANumFormatStr: String;
-      ANumFormatIndex: Integer); override;
     procedure WriteOBJ(AStream: TStream; AObjID: Word);
     function WriteRPNCellAddress(AStream: TStream; ARow, ACol: Cardinal;
       AFlags: TsRelFlags): word; override;
@@ -2063,6 +2063,49 @@ begin
     WriteFONT(AStream, Workbook.GetFont(i));
 end;
 
+procedure TsSpreadBiff8Writer.WriteFORMAT(AStream: TStream;
+  ANumFormatStr: String; ANumFormatIndex: Integer);
+type
+  TNumFormatRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    FormatIndex: Word;
+    FormatStringLen: Word;
+    FormatStringFlags: Byte;
+  end;
+var
+  len: Integer;
+  ws: widestring;
+  rec: TNumFormatRecord;
+  buf: array of byte;
+begin
+  ws := UTF8Decode(ANumFormatStr);
+  len := Length(ws);
+
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_FORMAT);
+  rec.RecordSize := WordToLE(2 + 2 + 1 + len * SizeOf(WideChar));
+
+  { Format index }
+  rec.FormatIndex := WordToLE(ANumFormatIndex);
+
+  { Format string }
+  { - length of string = 16 bits }
+  rec.FormatStringLen := WordToLE(len);
+  { - Widestring flags, 1 = regular unicode LE string }
+  rec.FormatStringFlags := 1;
+  { - Copy the text characters into a buffer immediately after rec }
+  SetLength(buf, SizeOf(rec) + SizeOf(WideChar)*len);
+  Move(rec, buf[0], SizeOf(rec));
+  Move(ws[1], buf[SizeOf(rec)], len*SizeOf(WideChar));
+
+  { Write out }
+  AStream.WriteBuffer(buf[0], SizeOf(rec) + SizeOf(WideChar)*len);
+
+  { Clean up }
+  SetLength(buf, 0);
+end;
+
 {@@ ----------------------------------------------------------------------------
   Writes the first MSODRAWING record to file. It is needed for a comment
   attached to a cell, but also for embedded shapes (currently not supported).
@@ -2239,49 +2282,6 @@ begin
   AStream.WriteByte(0);                            // Flag for 8-bit characters
   AStream.WriteBuffer(AUTHOR[1], len);             // Author
   AStream.WriteByte(0);                            // Unused
-end;
-
-procedure TsSpreadBiff8Writer.WriteNumFormat(AStream: TStream;
-  ANumFormatStr: String; ANumFormatIndex: Integer);
-type
-  TNumFormatRecord = packed record
-    RecordID: Word;
-    RecordSize: Word;
-    FormatIndex: Word;
-    FormatStringLen: Word;
-    FormatStringFlags: Byte;
-  end;
-var
-  len: Integer;
-  ws: widestring;
-  rec: TNumFormatRecord;
-  buf: array of byte;
-begin
-  ws := UTF8Decode(ANumFormatStr);
-  len := Length(ws);
-
-  { BIFF record header }
-  rec.RecordID := WordToLE(INT_EXCEL_ID_FORMAT);
-  rec.RecordSize := WordToLE(2 + 2 + 1 + len * SizeOf(WideChar));
-
-  { Format index }
-  rec.FormatIndex := WordToLE(ANumFormatIndex);
-
-  { Format string }
-  { - length of string = 16 bits }
-  rec.FormatStringLen := WordToLE(len);
-  { - Widestring flags, 1 = regular unicode LE string }
-  rec.FormatStringFlags := 1;
-  { - Copy the text characters into a buffer immediately after rec }
-  SetLength(buf, SizeOf(rec) + SizeOf(WideChar)*len);
-  Move(rec, buf[0], SizeOf(rec));
-  Move(ws[1], buf[SizeOf(rec)], len*SizeOf(WideChar));
-
-  { Write out }
-  AStream.WriteBuffer(buf[0], SizeOf(rec) + SizeOf(WideChar)*len);
-
-  { Clean up }
-  SetLength(buf, 0);
 end;
 
 {@@ ----------------------------------------------------------------------------

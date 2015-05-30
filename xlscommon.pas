@@ -481,6 +481,9 @@ type
     // Writes out ERROR cell record
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
+    // Writes out a FORMAT record
+    procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
+      ANumFormatIndex: Integer); virtual;
     // Writes out a FORMULA record; formula is stored in cell already
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
@@ -488,9 +491,6 @@ type
     procedure WriteHeaderFooter(AStream: TStream; AIsHeader: Boolean); virtual;
     // Writes out page margin for printing
     procedure WriteMARGIN(AStream: TStream; AMargin: Integer);
-    // Writes out a FORMAT record
-    procedure WriteNumFormat(AStream: TStream; ANumFormatStr: String;
-      ANumFormatIndex: Integer); virtual;
     // Writes out all FORMAT records
     procedure WriteNumFormats(AStream: TStream);
     // Writes out a floating point NUMBER record
@@ -2656,19 +2656,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Writes a BIFF number format record defined in the specified format string
-  (in Excel dialect).
-  AFormatIndex is equal to the format index used in the Excel file.
-  Needs to be overridden by descendants.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFFWriter.WriteNumFormat(AStream: TStream;
-  ANumFormatStr: String; ANumFormatIndex: Integer);
-begin
-  Unused(AStream, ANumFormatStr, ANumFormatIndex);
-  // needs to be overridden
-end;
-
-{@@ ----------------------------------------------------------------------------
   Writes all number formats to the stream. Saving starts at the item with the
   FirstFormatIndexInFile.
 -------------------------------------------------------------------------------}
@@ -2685,11 +2672,24 @@ begin
     parser := TsNumFormatParser.Create(Workbook, fmtStr);
     try
       fmtStr := parser.FormatString;
-      WriteNumFormat(AStream, fmtStr, i);
+      WriteFORMAT(AStream, fmtStr, i);
     finally
       parser.Free;
     end;
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a BIFF number format record defined in the specified format string
+  (in Excel dialect).
+  AFormatIndex is equal to the format index used in the Excel file.
+  Needs to be overridden by descendants.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteFORMAT(AStream: TStream;
+  ANumFormatStr: String; ANumFormatIndex: Integer);
+begin
+  Unused(AStream, ANumFormatStr, ANumFormatIndex);
+  // needs to be overridden
 end;
 
 {@@ ----------------------------------------------------------------------------
