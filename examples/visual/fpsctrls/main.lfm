@@ -71,6 +71,7 @@ object MainForm: TMainForm
       Top = 23
       Width = 277
       Align = alClient
+      DefaultColWidth = 125
       MouseWheelOption = mwGrid
       RowCount = 30
       TabOrder = 1
@@ -114,10 +115,7 @@ object MainForm: TMainForm
       )
       WorkbookSource = WorkbookSource
       Mode = imWorkbook
-      ColWidths = (
-        114
-        114
-      )
+      ExtendedColSizing = True
     end
   end
   object InspectorSplitter: TSplitter
