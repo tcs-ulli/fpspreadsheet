@@ -2024,7 +2024,6 @@ procedure TsCellCombobox.ExtractFromCell(ACell: PCell);
 var
   fnt: TsFont;
   clr: TsColor;
-  idx: Integer;
 begin
   case FFormatItem of
     cfiFontName:

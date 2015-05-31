@@ -1077,6 +1077,7 @@ end;
 procedure TsActionBorder.ApplyStyle(AWorkbook: TsWorkbook;
   out ABorderStyle: TsCellBorderStyle);
 begin
+  Unused(AWorkbook);
   ABorderStyle.LineStyle := FLineStyle;
   ABorderStyle.Color := ABorderStyle.Color and $00FFFFFF;
 end;
@@ -1084,6 +1085,7 @@ end;
 procedure TsActionBorder.ExtractStyle(AWorkbook: TsWorkbook;
   ABorderStyle: TsCellBorderStyle);
 begin
+  Unused(AWorkbook);
   FLineStyle := ABorderStyle.LineStyle;
   Color := ColorToRGB(ABorderStyle.Color);
 end;

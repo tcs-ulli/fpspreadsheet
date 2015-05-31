@@ -116,6 +116,10 @@ object MainForm: TMainForm
       WorkbookSource = WorkbookSource
       Mode = imWorkbook
       ExtendedColSizing = True
+      ColWidths = (
+        138
+        139
+      )
     end
   end
   object InspectorSplitter: TSplitter

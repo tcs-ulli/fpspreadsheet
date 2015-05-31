@@ -111,7 +111,7 @@ function IsDateTimeFormat(AFormatStr: string): Boolean;
 var
   parser: TsNumFormatParser;
 begin
-  parser := TsNumFormatParser.Create(nil, AFormatStr);
+  parser := TsNumFormatParser.Create(AFormatStr, DefaultFormatSettings);
   try
     Result := parser.IsDateTimeFormat;
   finally
@@ -166,7 +166,7 @@ function IsTimeFormat(AFormatStr: String): Boolean;
 var
   parser: TsNumFormatParser;
 begin
-  parser := TsNumFormatParser.Create(nil, AFormatStr);
+  parser := TsNumFormatParser.Create(AFormatStr, DefaultFormatSettings);
   try
     Result := parser.IsTimeFormat;
   finally
@@ -250,7 +250,7 @@ var
   newSections: TsNumFormatSections;
   i: Integer;
 begin
-  parser := TsNumFormatParser.Create(FWorkbook, AFormatStr);
+  parser := TsNumFormatParser.Create(AFormatStr, FWorkbook.FormatSettings);
   try
     SetLength(newSections, parser.ParsedSectionCount);
     for i:=0 to High(newSections) do
@@ -301,7 +301,7 @@ function TsNumFormatList.Find(AFormatStr: String): Integer;
 var
   nfp: TsNumFormatParams;
 begin
-  nfp := CreateNumFormatParams(FWorkbook, AFormatStr);
+  nfp := CreateNumFormatParams(AFormatStr, FWorkbook.FormatSettings);
   if nfp = nil then
     Result := -1
   else

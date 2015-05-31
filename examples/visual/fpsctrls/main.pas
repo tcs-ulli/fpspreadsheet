@@ -371,6 +371,7 @@ begin
   Result := TMemIniFile.Create(GetAppConfigFile(false));
 end;
 
+
 { TMainForm }
 
 { Adds a column before the active cell }

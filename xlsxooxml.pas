@@ -825,7 +825,7 @@ var
   rgb: TsColor;
   idx: Integer;
   tint: Double;
-  n: Integer;
+  n, i: Integer;
 begin
   Assert(ANode <> nil);
 
@@ -846,16 +846,16 @@ begin
 
   s := GetAttrValue(ANode, 'indexed');
   if s <> '' then begin
-    Result := StrToInt(s);
+    i := StrToInt(s);
     n := FPalette.Count;
-    if (Result <= LAST_PALETTE_INDEX) and (Result < n) then
+    if (i <= LAST_PALETTE_INDEX) and (i < n) then
     begin
-      Result := FPalette[Result];
+      Result := FPalette[i];
       exit;
     end;
     // System colors
     // taken from OpenOffice docs
-    case Result of
+    case i of
       $0040: Result := scBlack;  // Default border color
       $0041: Result := scWhite;  // Default background color
       $0043: Result := scGray;   // Dialog background color
@@ -864,7 +864,7 @@ begin
       $004F: Result := scBlack;  // Automatic color for chart border lines
       $0050: Result := scBlack;  // ???
       $0051: Result := scBlack;  // ??
-      $7FFF: Result := scBlack;  // ??
+      $7FFF: Result := scBlack;  // Automatic text color
       else   Result := scBlack;
     end;
     exit;
@@ -2383,7 +2383,7 @@ begin
   for i:= FFirstNumFormatIndexInFile to NumFormatList.Count-1 do
   begin
     numFmtStr := NumFormatList[i];
-    parser := TsNumFormatParser.Create(Workbook, numFmtStr);
+    parser := TsNumFormatParser.Create(numFmtStr, Workbook.FormatSettings);
     try
       numFmtStr := UTF8TextToXMLText(parser.FormatString);
       xmlStr := xmlStr + Format('<numFmt numFmtId="%d" formatCode="%s" />',
@@ -2407,6 +2407,7 @@ end;
 procedure TsSpreadOOXMLWriter.WritePalette(AStream: TStream);
 begin
   // just keep it here in case we'd need it later...
+  Unused(AStream);
 end;
 
 procedure TsSpreadOOXMLWriter.WritePageMargins(AStream: TStream;

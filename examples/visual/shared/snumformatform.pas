@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ButtonPanel,
   ExtCtrls, StdCtrls, Spin, Buttons, types, contnrs, inifiles,
-  fpsTypes, fpSpreadsheet, fpsNumFormat;
+  fpsTypes, fpSpreadsheet;
 
 type
   TsNumFormatCategory = (nfcNumber, nfcPercent, nfcScientific, nfcFraction,
@@ -342,8 +342,6 @@ end;
 { TNumFormatForm }
 
 constructor TNumFormatForm.Create(AOwner: TComponent);
-var
-  cat: TsNumFormatCategory;
 begin
   inherited Create(AOwner);
   FGenerator[nfcNumber] := -1234.123456;
@@ -359,7 +357,6 @@ end;
 procedure TNumFormatForm.BtnAddCurrSymbolClick(Sender: TObject);
 var
   F: TCurrencyForm;
-  i: Integer;
 begin
   F := TCurrencyForm.Create(nil);
   try
@@ -400,7 +397,6 @@ var
   idx: Integer;
   nfs: String;
   n, i: Integer;
-  nfp: TsNumFormatParams;
 begin
   if LbCategory.ItemIndex > -1 then begin
     // Find in internal template list
@@ -476,7 +472,7 @@ begin
     exit;
 
   if EdNumFormatStr.Text = '' then nfs := 'General' else nfs := EdNumFormatStr.Text;
-  nfp := CreateNumFormatParams(FWorkbook, nfs);
+  nfp := CreateNumFormatParams(nfs, FWorkbook.FormatSettings);
   if nfp <> nil then
     try
       nfp.SetNegativeRed(CbNegRed.Checked);
@@ -497,7 +493,7 @@ begin
     exit;
 
   if EdNumFormatStr.Text = '' then nfs := 'General' else nfs := EdNumFormatStr.Text;
-  nfp := CreateNumFormatParams(FWorkbook, nfs);
+  nfp := CreateNumFormatParams(nfs, FWorkbook.FormatSettings);
   if nfp <> nil then
     try
       nfp.SetThousandSep(CbThousandSep.Checked);
@@ -520,7 +516,7 @@ procedure TNumFormatForm.EdNumFormatStrChange(Sender: TObject);
 var
   nfp: TsNumFormatParams;
 begin
-  nfp := CreateNumFormatParams(FWorkbook, EdNumFormatStr.Text);
+  nfp := CreateNumFormatParams(EdNumFormatStr.Text, FWorkbook.FormatSettings);
   try
     UpdateControls(nfp);
   finally
@@ -601,7 +597,7 @@ begin
     s := LbFormat.Items[Index];
     idx := PtrInt(LbFormat.Items.Objects[Index]);
     nfs := NumFormats.Strings[idx];
-    nfp := CreateNumFormatParams(FWorkbook, nfs);
+    nfp := CreateNumFormatParams(nfs, FWorkbook.FormatSettings);
     try
       if (nfp <> nil) and (Length(nfp.Sections) > 1) and (nfp.Sections[1].Color = scRed) then
         LbFormat.Canvas.Font.Color := clRed;
@@ -616,11 +612,9 @@ end;
 
 procedure TNumFormatForm.ReplaceCurrSymbol;
 var
-  s, cs: String;
-  i, el: Integer;
-  section: TsNumFormatSection;
+   cs: String;
+  i: Integer;
   nfp: TsNumFormatParams;
-  list: TObjectList;
   data: PtrInt;
   cat: TsNumFormatCategory;
 begin
@@ -634,14 +628,10 @@ begin
       cat := TsNumFormatCategory(data - BUILTIN_OFFSET);
     if cat = nfcCurrency then
     begin
-      nfp := CreateNumFormatParams(FWorkbook, NumFormats.Strings[i]);
+      nfp := CreateNumFormatParams(NumFormats.Strings[i], FWorkbook.FormatSettings);
       if (nfp <> nil) then
         try
           nfp.SetCurrSymbol(cs);
-          {
-          if PtrInt(LbFormat.Items.Objects[LbFormat.ItemIndex]) = i then
-            UpdateSample(nfp);
-            }
         finally
           nfp.Free;
         end;
@@ -652,16 +642,12 @@ end;
 
 procedure TNumFormatForm.ReplaceDecs;
 var
-  s, cs: String;
-  i, el, e: Integer;
-  section: TsNumFormatSection;
   nfp: TsNumFormatParams;
-  list: TObjectList;
 begin
   if EdDecimals.Text = '' then
     exit;
 
-  nfp := CreateNumFormatParams(FWorkbook, EdNumFormatStr.Text);
+  nfp := CreateNumFormatParams(EdNumFormatStr.Text, FWorkbook.FormatSettings);
   try
     nfp.SetDecimals(EdDecimals.Value);
     EdNumFormatStr.Text := nfp.NumFormatStr;
@@ -693,7 +679,7 @@ begin
         cat := TsNumFormatCategory(data - BUILTIN_OFFSET);
       if cat = ACategory then
       begin
-        nfp := CreateNumFormatParams(FWorkbook, NumFormats.Strings[i]);
+        nfp := CreateNumFormatParams(NumFormats.Strings[i], FWorkbook.FormatSettings);
         try
           genValue := FGenerator[ACategory];
           if nfkTimeInterval in nfp.Sections[0].Kind then
@@ -746,7 +732,7 @@ begin
   LbFormat.ItemIndex := AIndex;
   if AIndex >= 0 then begin
     FNumFormatStrOfList := NumFormats.Strings[PtrInt(LbFormat.Items.Objects[AIndex])];
-    nfp := CreateNumFormatParams(FWorkbook, FNumFormatStrOfList);
+    nfp := CreateNumFormatParams(FNumFormatStrOfList, FWorkbook.FormatSettings);
     try
       UpdateControls(nfp);
     finally
@@ -776,9 +762,7 @@ var
   nfs: String;
   nfp: TsNumFormatParams;
   cat: TsNumFormatCategory;
-  j: Integer;
   i: Integer;
-  data: PtrInt;
 begin
   if AValue = '' then
     i := NumFormats.IndexOf('General')
@@ -788,7 +772,7 @@ begin
     exit;
 
   nfs := NumFormats.Strings[i];
-  nfp := CreateNumFormatParams(FWorkbook, nfs);
+  nfp := CreateNumFormatParams(nfs, FWorkbook.FormatSettings);
   try
     if nfkPercent in nfp.Sections[0].Kind then
       cat := nfcPercent

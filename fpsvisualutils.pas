@@ -8,25 +8,27 @@ uses
   Classes, SysUtils, Graphics,
   fpstypes, fpspreadsheet;
 
-procedure Convert_sFont_to_Font(AWorkbook: TsWorkbook; sFont: TsFont; AFont: TFont);
-procedure Convert_Font_to_sFont(AWorkbook: TsWorkbook; AFont: TFont; sFont: TsFont);
-//function FindNearestPaletteIndex(AWorkbook: TsWorkbook; AColor: TColor): TsColor;
+procedure Convert_sFont_to_Font(sFont: TsFont; AFont: TFont); overload;
+procedure Convert_sFont_to_Font(AWorkbook: TsWorkbook; sFont: TsFont; AFont: TFont); overload; deprecated;
+
+procedure Convert_Font_to_sFont(AFont: TFont; sFont: TsFont); overload;
+procedure Convert_Font_to_sFont(AWorkbook: TsWorkbook; AFont: TFont; sFont: TsFont); overload; deprecated;
+
 function WrapText(ACanvas: TCanvas; const AText: string; AMaxWidth: integer): string;
 
 
 implementation
 
 uses
-  Types, LCLType, LCLIntf, Math;
+  Types, LCLType, LCLIntf, fpsUtils;
 
 {@@ ----------------------------------------------------------------------------
   Converts a spreadsheet font to a font used for painting (TCanvas.Font).
 
-  @param  AWorkbook  Workbook in which the font is used
   @param  sFont      Font as used by fpspreadsheet (input)
   @param  AFont      Font as used by TCanvas for painting (output)
 -------------------------------------------------------------------------------}
-procedure Convert_sFont_to_Font(AWorkbook: TsWorkbook; sFont: TsFont; AFont: TFont);
+procedure Convert_sFont_to_Font(sFont: TsFont; AFont: TFont);
 begin
   if Assigned(AFont) and Assigned(sFont) then begin
     AFont.Name := sFont.FontName;
@@ -40,13 +42,19 @@ begin
   end;
 end;
 
+procedure Convert_sFont_to_Font(AWorkbook: TsWorkbook; sFont: TsFont; AFont: TFont);
+begin
+  Unused(AWorkbook);
+  Convert_sFont_to_Font(sFont, AFont);
+end;
+
 {@@ ----------------------------------------------------------------------------
   Converts a font used for painting (TCanvas.Font) to a spreadsheet font.
 
   @param  AFont  Font as used by TCanvas for painting (input)
   @param  sFont  Font as used by fpspreadsheet (output)
 -------------------------------------------------------------------------------}
-procedure Convert_Font_to_sFont(AWorkbook: TsWorkbook; AFont: TFont; sFont: TsFont);
+procedure Convert_Font_to_sFont(AFont: TFont; sFont: TsFont);
 begin
   if Assigned(AFont) and Assigned(sFont) then begin
     sFont.FontName := AFont.Name;
@@ -59,96 +67,13 @@ begin
     sFont.Color := ColorToRGB(AFont.Color);
   end;
 end;
-                                                (*
-function FindNearestPaletteIndex(AWorkbook: TsWorkbook; AColor: TColor): TsColor;
 
-  procedure ColorToHSL(RGB: TColor; out H, S, L : double);
-  // Taken from https://code.google.com/p/thtmlviewer/source/browse/trunk/source/HSLUtils.pas?r=277
-  // The procedure in GraphUtils crashes for some colors in Laz < 1.3
-  var
-    R, G, B, D, Cmax, Cmin: double;
-  begin
-    R := GetRValue(RGB) / 255;
-    G := GetGValue(RGB) / 255;
-    B := GetBValue(RGB) / 255;
-    Cmax := Max(R, Max(G, B));
-    Cmin := Min(R, Min(G, B));
-
-    // calculate luminosity
-    L := (Cmax + Cmin) / 2;
-
-    if Cmax = Cmin then begin // it's grey
-      H := 0; // it's actually undefined
-      S := 0
-    end else
-    begin
-      D := Cmax - Cmin;
-
-      // calculate Saturation
-      if L < 0.5 then
-        S := D / (Cmax + Cmin)
-      else
-        S := D / (2 - Cmax - Cmin);
-
-      // calculate Hue
-      if R = Cmax then
-        H := (G - B) / D
-      else
-      if G = Cmax then
-        H := 2 + (B - R) /D
-      else
-        H := 4 + (R - G) / D;
-
-      H := H / 6;
-      if H < 0 then
-        H := H + 1
-    end
-  end;
-
-  function ColorDistance(color1, color2: TColor): Double;
-  var
-    H1,S1,L1, H2,S2,L2: Double;
-  begin
-    ColorToHSL(color1, H1, S1, L1);
-    ColorToHSL(color2, H2, S2, L2);
-    Result := sqr(H1-H2) + sqr(S1-S2) + sqr(L1-L2);
-  end;
-
-  {
-  // To be activated when Lazarus 1.4 is available. (RgbToHLS bug in Laz < 1.3)
-
-  function ColorDistance(color1, color2: TColor): Integer;
-  type
-    TRGBA = packed record R, G, B, A: Byte end;
-  var
-    H1,L1,S1, H2,L2,S2: Byte;
-  begin
-    ColorToHLS(color1, H1,L1,S1);
-    ColorToHLS(color2, H2,L2,S2);
-    result := sqr(Integer(H1)-H2) + sqr(Integer(L1)-L2) + sqr(Integer(S1)-S2);
-  end;
-  }
-
-var
-  i: Integer;
-  dist, mindist: Double;
+procedure Convert_Font_to_sFont(AWorkbook: TsWorkbook; AFont: TFont; sFont: TsFont);
 begin
-  Result := 0;
-  if AWorkbook <> nil then
-  begin
-    mindist := 1E308;
-    for i:=0 to AWorkbook.GetPaletteSize-1 do
-    begin
-      dist := ColorDistance(AColor, TColor(AWorkbook.GetPaletteColor(i)));
-      if dist < mindist then
-      begin
-        mindist := dist;
-        Result := i;
-      end;
-    end;
-  end;
+  Unused(AWorkbook);
+  Convert_Font_to_sFont(AFont, sFont);
 end;
-        *)
+
 {@@ ----------------------------------------------------------------------------
   Wraps text by inserting line ending characters so that the lines are not
   longer than AMaxWidth.

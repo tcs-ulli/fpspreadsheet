@@ -69,7 +69,7 @@
         <PackageName Value="LCLBase"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="24">
+    <Units Count="25">
       <Unit0>
         <Filename Value="spreadtestcli.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -141,7 +141,6 @@
       <Unit17>
         <Filename Value="dbexporttests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="dbexporttests"/>
       </Unit17>
       <Unit18>
         <Filename Value="sortingtests.pas"/>
@@ -166,8 +165,11 @@
       <Unit23>
         <Filename Value="hyperlinktests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="hyperlinktests"/>
       </Unit23>
+      <Unit24>
+        <Filename Value="pagelayouttests.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit24>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
