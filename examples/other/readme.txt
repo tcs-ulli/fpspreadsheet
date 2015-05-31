@@ -15,6 +15,8 @@ This folder contains various demo applications:
 - demo_virtualmode_reading: demonstrates how the virtual mode of the workbook
   can be used to read huge spreadsheet files. Requires the file written by
   demo_virtualmode_writing.
+
+- demo_write_colors: show the colors of the Excel8 color palette
   
 - demo_write_formatting: shows some simple cell formatting
 
