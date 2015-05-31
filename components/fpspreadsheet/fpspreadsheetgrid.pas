@@ -589,7 +589,7 @@ implementation
 
 uses
   Types, LCLType, LCLIntf, LCLProc, Math, StrUtils,
-  fpCanvas, fpsStrings, fpsUtils, fpsVisualUtils;
+  fpCanvas, fpsStrings, fpsUtils, fpsVisualUtils, fpsNumFormat;
 
 const
   {@@ Translation of the fpspreadsheet type of horizontal text alignment to that

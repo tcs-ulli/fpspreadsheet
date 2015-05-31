@@ -154,7 +154,7 @@ implementation
 
 uses
   Math,
-  fpsStrings, fpsUtils, fpsStreams;
+  fpsStrings, fpsUtils, fpsNumFormat, fpsStreams;
 
 {@@ ----------------------------------------------------------------------------
   Registers a new reader/writer pair for a given spreadsheet file format

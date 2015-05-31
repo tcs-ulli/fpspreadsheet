@@ -10,7 +10,7 @@ program excel5read;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, LazUTF8, fpsTypes, fpspreadsheet, xlsbiff5;
+  Classes, SysUtils, LazUTF8, fpsTypes, fpsUtils, fpspreadsheet, xlsbiff5;
 
 var
   MyWorkbook: TsWorkbook;
@@ -31,27 +31,30 @@ begin
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
-  MyWorkbook.ReadFromFile(InputFilename, sfExcel5);
+  try
+    MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
+    MyWorkbook.ReadFromFile(InputFilename, sfExcel5);
 
-  MyWorksheet := MyWorkbook.GetFirstWorksheet;
+    MyWorksheet := MyWorkbook.GetFirstWorksheet;
 
-  // Write all cells with contents to the console
-  WriteLn('');
-  WriteLn('Contents of the first worksheet of the file:');
-  WriteLn('');
+    // Write all cells with contents to the console
+    WriteLn('');
+    WriteLn('Contents of the first worksheet of the file:');
+    WriteLn('');
 
-  for CurCell in MyWorksheet.Cells do
-  begin
-    Write('Row: ', CurCell^.Row,
-     ' Col: ', CurCell^.Col, ' Value: ',
-    UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col)));
-    if HasFormula(CurCell) then
-      Write(' - Formula: ', CurCell^.FormulaValue);
-    WriteLn;
+    for CurCell in MyWorksheet.Cells do
+    begin
+      Write('Row: ', CurCell^.Row,
+       ' Col: ', CurCell^.Col, ' Value: ',
+      UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col)));
+      if HasFormula(CurCell) then
+        Write(' - Formula: ', CurCell^.FormulaValue);
+      WriteLn;
+    end;
+
+  finally
+    // Finalization
+    MyWorkbook.Free;
   end;
-
-  // Finalization
-  MyWorkbook.Free;
 end.
 

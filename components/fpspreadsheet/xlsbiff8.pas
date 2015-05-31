@@ -258,7 +258,8 @@ implementation
 
 uses
   Math, lconvencoding, LazFileUtils, URIParser,
-  fpsStrings, fpsStreams, fpsReaderWriter, fpsPalette, fpsExprParser, xlsEscher;
+  fpsStrings, fpsStreams, fpsReaderWriter, fpsPalette, fpsNumFormat,
+  fpsExprParser, xlsEscher;
 
 const
    { Excel record IDs }

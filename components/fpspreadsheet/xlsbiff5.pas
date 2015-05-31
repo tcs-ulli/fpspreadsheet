@@ -214,7 +214,7 @@ var
 implementation
 
 uses
-  Math, fpsStrings, fpsStreams, fpsReaderWriter, fpsPalette;
+  Math, fpsStrings, fpsStreams, fpsReaderWriter, fpsPalette, fpsNumFormat;
 
 const
    { Excel record IDs }

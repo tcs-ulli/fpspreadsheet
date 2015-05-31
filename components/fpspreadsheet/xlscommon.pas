@@ -565,7 +565,7 @@ implementation
 
 uses
   AVL_Tree, Math, Variants,
-  {%H-}fpspatches, fpsStrings, xlsConst, fpsrpn, fpsExprParser;
+  {%H-}fpspatches, fpsStrings, fpsNumFormat, xlsConst, fpsrpn, fpsExprParser;
 
 const
   { Helper table for rpn formulas:

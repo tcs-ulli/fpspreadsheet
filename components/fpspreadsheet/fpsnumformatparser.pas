@@ -7,7 +7,7 @@ unit fpsNumFormatParser;
 interface
 
 uses
-  Classes, SysUtils, fpstypes;
+  Classes, SysUtils, fpstypes, fpsNumFormat;
 
 
 const

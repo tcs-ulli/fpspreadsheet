@@ -161,7 +161,7 @@ var
 implementation
 
 uses
-  Math, fpsStrings, fpsReaderWriter, fpsPalette;
+  Math, fpsStrings, fpsReaderWriter, fpsPalette, fpsNumFormat;
 
 const
   { Excel record IDs }

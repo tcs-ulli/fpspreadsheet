@@ -23,7 +23,7 @@ uses
   clocale,
  {$endif}{$endif}{$endif}
   Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding,
-  fpsTypes, fpsClasses;
+  fpsTypes, fpsClasses, fpsNumFormat;
 
 type
   { Forward declarations }
@@ -781,7 +781,7 @@ uses
   Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
   fpsStrings, uvirtuallayer_ole,
   fpsUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
-  fpsNumFormat, fpsNumFormatParser;
+  fpsNumFormatParser;
 
 (*
 const

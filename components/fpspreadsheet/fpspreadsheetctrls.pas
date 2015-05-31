@@ -458,7 +458,7 @@ implementation
 
 uses
   Types, Math, TypInfo, LCLType, LCLProc, Dialogs, Forms,
-  fpsStrings, fpsUtils;
+  fpsStrings, fpsUtils, fpsNumFormat;
 
 {@@ ----------------------------------------------------------------------------
   Registers the spreadsheet components in the Lazarus component palette,

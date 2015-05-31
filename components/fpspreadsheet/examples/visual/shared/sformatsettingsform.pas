@@ -85,7 +85,7 @@ implementation
 {$R *.lfm}
 
 uses
-  fpsUtils,
+  fpsUtils, fpsNumFormat,
   sCurrencyForm;
 
 const
