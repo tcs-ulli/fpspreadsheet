@@ -15,7 +15,7 @@ uses
   formattests, colortests, emptycelltests, insertdeletetests, errortests,
   numberstests, fonttests, formulatests, numformatparsertests, optiontests,
   virtualmodetests, dbexporttests, sortingtests, copytests, celltypetests,
-  commenttests, enumeratortests, hyperlinktests;
+  commenttests, enumeratortests, hyperlinktests, pagelayouttests;
 
 const
   ShortOpts = 'ac:dhlpr:x';

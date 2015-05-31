@@ -258,7 +258,7 @@ begin
   MyWorkbook := TsWorkbook.Create;  // needed to provide the FormatSettings for the parser
   try
     for i:=0 to High(ParserTestData) do begin
-      parser := TsNumFormatParser.Create(MyWorkbook, ParserTestData[i].FormatString);
+      parser := TsNumFormatParser.Create(ParserTestData[i].FormatString, MyWorkbook.FormatSettings);
       try
         actual := parser.FormatString;
         CheckEquals(ParserTestData[i].SollFormatString, actual,

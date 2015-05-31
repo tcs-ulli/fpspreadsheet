@@ -952,7 +952,7 @@ begin
   if ANumberFormat = nfTimeInterval then
     ADateTime := Number
   else begin
-    parser := TsNumFormatParser.Create(Workbook, ANumberFormatStr);
+    parser := TsNumFormatParser.Create(ANumberFormatStr, Workbook.FormatSettings);
     try
       if (parser.Status = psOK) and parser.IsDateTimeFormat then
         ADateTime := ConvertExcelDateTimeToDateTime(Number, FDateMode)
@@ -2669,7 +2669,7 @@ begin
   for i:= FFirstNumFormatIndexInFile to NumFormatList.Count-1 do
   begin
     fmtStr := NumFormatList[i];
-    parser := TsNumFormatParser.Create(Workbook, fmtStr);
+    parser := TsNumFormatParser.Create(fmtStr, Workbook.FormatSettings);
     try
       fmtStr := parser.FormatString;
       WriteFORMAT(AStream, fmtStr, i);

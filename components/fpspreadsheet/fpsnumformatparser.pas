@@ -7,7 +7,7 @@ unit fpsNumFormatParser;
 interface
 
 uses
-  Classes, SysUtils, fpstypes, fpspreadsheet;
+  Classes, SysUtils, fpstypes;
 
 
 const
@@ -50,7 +50,7 @@ type
     procedure SetDecimals(AValue: Byte);
 
   protected
-    FWorkbook: TsWorkbook;
+    FFormatSettings: TFormatSettings;
     FSections: TsNumFormatSections;
 
     { Administration while scanning }
@@ -92,7 +92,8 @@ type
     function BuildFormatString: String; virtual;
 
   public
-    constructor Create(AWorkbook: TsWorkbook; const AFormatString: String);
+    constructor Create(const AFormatString: String;
+      const AFormatSettings: TFormatSettings);
     destructor Destroy; override;
     procedure ClearAll;
     function GetDateTimeCode(ASection: Integer): String;
@@ -113,10 +114,11 @@ type
   end;
 
 
-  function CreateNumFormatParams(AWorkbook: TsWorkbook;
-    ANumFormatStr: String): TsNumFormatParams;
-  function ParamsOfNumFormatStr(AWorkbook: TsWorkbook;
-    ANumFormatStr: String; var AResult: TsNumFormatParams): Integer;
+  function CreateNumFormatParams(ANumFormatStr: String;
+    const AFormatSettings: TFormatSettings): TsNumFormatParams;
+
+  function ParamsOfNumFormatStr(ANumFormatStr: String;
+    const AFormatSettings: TFormatSettings; var AResult: TsNumFormatParams): Integer;
 
 
 implementation
@@ -125,36 +127,33 @@ uses
   TypInfo, Math, LazUTF8, fpsutils, fpsCurrency;
 
 
-function CreateNumFormatParams(AWorkbook: TsWorkbook;
-  ANumFormatStr: String): TsNumFormatParams;
+function CreateNumFormatParams(ANumFormatStr: String;
+  const AFormatSettings: TFormatSettings): TsNumFormatParams;
 begin
   Result := TsNumFormatParams.Create;
-  ParamsOfNumFormatStr(AWorkbook, ANumFormatStr, result);
+  ParamsOfNumFormatStr(ANumFormatStr, AFormatSettings, result);
 end;
 
-function ParamsOfNumFormatStr(AWorkbook: TsWorkbook;
-  ANumFormatStr: String; var AResult: TsNumFormatParams): Integer;
+function ParamsOfNumFormatStr(ANumFormatStr: String;
+  const AFormatSettings: TFormatSettings; var AResult: TsNumFormatParams): Integer;
 var
   parser: TsNumFormatParser;
 begin
   Assert(AResult <> nil);
   if ANumFormatstr = 'General' then ANumFormatStr := '';
-  parser := TsNumFormatParser.Create(AWorkbook, ANumFormatStr);
+  parser := TsNumFormatParser.Create(ANumFormatStr, AFormatSettings);
   try
     Result := parser.Status;
     AResult.Sections := parser.FSections;
-    {
-    SetLength(AResult.Sections, parser.ParsedSectionCount);
-    for i:=0 to parser.ParsedSectionCount-1 do
-      AResult.Sections[i] := parser.ParsedSections[i];
-      }
   finally
     parser.Free;
   end;
 end;
 
 
-{ TsNumFormatParser }
+{------------------------------------------------------------------------------}
+{                              TsNumFormatParser                               }
+{------------------------------------------------------------------------------}
 
 {@@ ----------------------------------------------------------------------------
   Creates a number format parser for analyzing a formatstring that has been
@@ -163,11 +162,11 @@ end;
   If ALocalized is true then the formatstring contains localized decimal
   separator etc.
 -------------------------------------------------------------------------------}
-constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
-  const AFormatString: String);
+constructor TsNumFormatParser.Create(const AFormatString: String;
+  const AFormatSettings: TFormatSettings);
 begin
   inherited Create;
-  FWorkbook := AWorkbook;
+  FFormatSettings := AFormatSettings;
   Parse(AFormatString);
   CheckSections;
   if AFormatString = '' then FSections[0].NumFormat := nfGeneral;
@@ -259,7 +258,7 @@ end;
 
 function TsNumFormatParser.AnalyzeCurrency(const AValue: String): Boolean;
 begin
-  if (FWorkbook = nil) or (FWorkbook.FormatSettings.CurrencyString = '') then
+  if (FFormatSettings.CurrencyString = '') then
     Result := false
   else
     Result := CurrencyRegistered(AValue);
@@ -404,7 +403,7 @@ begin
         nfShortTime, nfLongTimeAM, nfShortTimeAM, nfDayMonth, nfMonthYear];
       for nf in formats do
       begin
-        nfsTest := BuildDateTimeFormatString(nf, FWorkbook.FormatSettings);
+        nfsTest := BuildDateTimeFormatString(nf, FFormatSettings);
         if Length(nfsTest) = Length(nfs) then
         begin
           if SameText(nfs, nfsTest) then
@@ -415,8 +414,8 @@ begin
           for i := 1 to Length(nfsTest) do
             case nfsTest[i] of
               '/': if not (nf in [nfLongTimeAM, nfShortTimeAM]) then
-                     nfsTest[i] := FWorkbook.FormatSettings.DateSeparator;
-              ':': nfsTest[i] := FWorkbook.FormatSettings.TimeSeparator;
+                     nfsTest[i] := FFormatSettings.DateSeparator;
+              ':': nfsTest[i] := FFormatSettings.TimeSeparator;
               'n': nfsTest[i] := 'm';
             end;
           if SameText(nfs, nfsTest) then
@@ -437,7 +436,7 @@ begin
     begin
       formats := [nfFixed, nfFixedTh, nfPercentage, nfExp];
       for nf in formats do begin
-        nfsTest := BuildNumberFormatString(nf, FWorkbook.FormatSettings, section^.Decimals);
+        nfsTest := BuildNumberFormatString(nf, FFormatSettings, section^.Decimals);
         if SameText(nfs, nfsTest) then
         begin
           section^.NumFormat := nf;

@@ -793,6 +793,7 @@ uses
   fpsUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
   fpsNumFormat, fpsNumFormatParser;
 
+(*
 const
   { These are reserved system colors by Microsoft
     0x0040 - Default foreground color - window text color in the sheet display.
@@ -823,64 +824,8 @@ const
   DEF_CHART_NEUTRAL_COLORVALUE = $FFFFFF;
   DEF_TOOLTIP_TEXT_COLORVALUE = $000000;
   DEF_FONT_AUTOMATIC_COLORVALUE = $000000;
-                                 (*
-var
-  {@@ RGB colors RGB in "big-endian" notation (red at left). The values are inverted
-    at initialization to be little-endian at run-time!
-    The indices into this palette are named as scXXXX color constants. }
-  DEFAULT_PALETTE: array[$00..$16] of TsColorValue = (
-    $000000,  // $00: black
-    $FFFFFF,  // $01: white
-    $FF0000,  // $02: red
-    $00FF00,  // $03: green
-    $0000FF,  // $04: blue
-    $FFFF00,  // $05: yellow
-    $FF00FF,  // $06: magenta
-    $00FFFF,  // $07: cyan
-    $800000,  // $08: dark red
-    $008000,  // $09: dark green
-    $000080,  // $0A: dark blue
-    $808000,  // $0B: olive
-    $800080,  // $0C: purple
-    $008080,  // $0D: teal
-    $C0C0C0,  // $0E: silver
-    $808080,  // $0F: gray
-    $E6E6E6,  // $10: gray 10%
-    $CCCCCC,  // $11: gray 20%
-    $FFA500,  // $12: orange
-    $A0522D,  // $13: dark brown
-    $CD853F,  // $14: brown
-    $F5F5DC,  // $15: beige
-    $F5DEB3   // $16: wheat
-  );
+       *)
 
-  {@@ Names of the colors of the DEFAULT_PALETTE }
-  DEFAULT_COLORNAMES: array[$00..$16] of string = (
-    'black',      // 0
-    'white',      // 1
-    'red',        // 2
-    'green',      // 3
-    'blue',       // 4
-    'yellow',     // 5
-    'magenta',    // 6
-    'cyan',       // 7
-    'dark red',   // 8
-    'dark green', // 9
-    'dark blue',  // $0A
-    'olive',      // $0B
-    'purple',     // $0C
-    'teal',       // $0D
-    'silver',     // $0E
-    'gray',       // $0F
-    'gray 10%',   // $10
-    'gray 20%',   // $11
-    'orange',     // $12
-    'dark brown', // $13
-    'brown',      // $14
-    'beige',      // $15
-    'wheat'       // $16
-  );
-                                   *)
 {@@ ----------------------------------------------------------------------------
   Copies the format of a cell to another one.
 
@@ -2208,7 +2153,7 @@ begin
   if ACell <> nil then
   begin
     ReadNumFormat(ACell, nf, nfs);
-    parser := TsNumFormatParser.Create(FWorkbook, nfs);
+    parser := TsNumFormatParser.Create(nfs, FWorkbook.FormatSettings);
     try
       if parser.Status = psOK then
       begin
@@ -3826,7 +3771,7 @@ var
   fmt: TsCellFormat;
 begin
   if ACell <> nil then begin
-    parser := TsNumFormatParser.Create(Workbook, ANumFormatString);
+    parser := TsNumFormatParser.Create(ANumFormatString, FWorkbook.FormatSettings);
     try
       // Format string ok?
       if parser.Status <> psOK then
@@ -4250,7 +4195,7 @@ begin
 
     // Check whether the formatstring is for date/times.
     if ANumFormatStr <> '' then begin
-      parser := TsNumFormatParser.Create(Workbook, ANumFormatStr);
+      parser := TsNumFormatParser.Create(ANumFormatStr, Workbook.FormatSettings);
       try
         // Format string ok?
         if parser.Status <> psOK then
@@ -4419,7 +4364,7 @@ begin
     numFmtStr := numFmt.NumFormatStr
   else
     numFmtStr := '0.00';
-  parser := TsNumFormatParser.Create(Workbook, numFmtStr);
+  parser := TsNumFormatParser.Create(numFmtStr, Workbook.FormatSettings);
   try
     parser.Decimals := ADecimals;
     numFmtStr := parser.FormatString;

@@ -828,8 +828,8 @@ begin
 
         nftDateTimeSep:
           case Elements[el].TextValue of
-            '/': Result := Result + '<number:text>' + FWorkbook.FormatSettings.DateSeparator + '</number:text>';
-            ':': Result := Result + '<number:text>' + FWorkbook.FormatSettings.TimeSeparator + '</number:text>';
+            '/': Result := Result + '<number:text>' + FFormatSettings.DateSeparator + '</number:text>';
+            ':': Result := Result + '<number:text>' + FFormatSettings.TimeSeparator + '</number:text>';
             ' ': Result := Result + '<number:text><![CDATA[ ]]></number:text>';
             else Result := Result + '<number:text>' + Elements[el].TextValue + '</number:text>';
           end;
@@ -2175,7 +2175,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
 
       fmt := NumFormatList[styleIndex];
       fmt := Copy(fmt, pos(':', fmt)+1, Length(fmt));
-      parser := TsNumFormatParser.Create(Workbook, fmt);
+      parser := TsNumFormatParser.Create(fmt, Workbook.FormatSettings);
       try
         nf := parser.NumFormat;
         if (nf = nfCurrency) and (parser.ParsedSections[0].Color = scRed) then
@@ -2242,7 +2242,6 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     cs: String;
     color: TsColor;
     hasColor: Boolean;
-    idx: Integer;
   begin
     nfs := '';
     cs := '';
@@ -4012,7 +4011,7 @@ begin
     p := pos(':', numFmtStr);
     numFmtName := Copy(numFmtStr, 1, p-1);
     numFmtStr := Copy(numFmtStr, p+1, Length(numFmtStr));
-    parser := TsSpreadOpenDocNumFormatParser.Create(Workbook, numFmtStr);
+    parser := TsSpreadOpenDocNumFormatParser.Create(numFmtStr, Workbook.FormatSettings);
     try
       numFmtXML := parser.BuildXMLAsString(numFmtName);
       if numFmtXML <> '' then

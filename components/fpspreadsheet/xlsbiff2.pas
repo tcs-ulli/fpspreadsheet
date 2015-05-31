@@ -161,7 +161,7 @@ var
 implementation
 
 uses
-  Math, fpsStrings, fpsReaderWriter, fpsPalette, fpsNumFormatParser;
+  Math, fpsStrings, fpsReaderWriter, fpsPalette;
 
 const
   { Excel record IDs }
@@ -444,7 +444,6 @@ var
   len: byte;
   fmtString: AnsiString;
   nfs: String;
-  parser: TsNumFormatParser;
 begin
   // number format string
   len := AStream.ReadByte;
@@ -453,17 +452,7 @@ begin
 
   // We need the format string as utf8 and non-localized
   nfs := ConvertEncoding(fmtString, FCodePage, encodingUTF8);
-  {
-  if not SameText(nfs, 'General') then
-  begin
-    parser := TsNumFormatParser.Create(FWorkbook, nfs, true);
-    try
-      nfs := parser.FormatString;
-    finally
-      parser.Free;
-    end;
-  end;
-   }
+
   // Add to the end of the list.
   NumFormatList.Add(nfs);
 end;
@@ -1416,9 +1405,6 @@ procedure TsSpreadBIFF2Writer.WriteXF(AStream: TStream;
 var
   rec: TBIFF2_XFRecord;
   b: Byte;
-  j: Integer;
-  nfParams: TsNumFormatParams;
-  nfs: String;
   formatIdx, fontIdx: Integer;
 begin
   Unused(XFType_Prot);
@@ -1578,24 +1564,10 @@ var
   s: ansistring;
   rec: TNumFormatRecord;
   buf: array of byte;
-  parser: TsNumFormatParser;
 begin
-  //Unused(ANumFormatStr);
+  Unused(AFormatIndex);
 
-  {if (AFormatIndex = 0) then
-    s := 'General'
-  else begin
-    parser := TsNumFormatParser.Create(FWorkbook, NumFormatList[AFormatIndex]);
-    try
-      parser.Localize;
-      s := parser.FormatString;
-      s := ConvertEncoding(s, encodingUTF8, FCodePage);
-    finally
-      parser.Free;
-    end;
-  end;
-  }
-//  s := ConvertEncoding(NumFormatList[AFormatIndex], encodingUTF8, FCodePage);
+  { Convert format string to code page used by the writer }
   s := ConvertEncoding(ANumFormatStr, encodingUTF8, FCodePage);
   len := Length(s);
 
