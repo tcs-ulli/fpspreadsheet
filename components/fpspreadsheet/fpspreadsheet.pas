@@ -6092,7 +6092,7 @@ begin
   SetDefaultFont(DEFAULT_FONTNAME, DEFAULT_FONTSIZE);
   InitFonts;
 
-  FNumFormatList := TsNumFormatList.Create(self, true);
+  FNumFormatList := TsNumFormatList.Create(FormatSettings, true);
   FCellFormatList := TsCellFormatList.Create(false);
 
   // Add default cell format

@@ -8,7 +8,7 @@ interface
 
 uses
   Classes, SysUtils,
-  fpstypes, fpspreadsheet;
+  fpstypes;
 
 type
   { TsNumFormatList }
@@ -19,11 +19,11 @@ type
     function GetItem(AIndex: Integer): TsNumFormatParams;
     procedure SetItem(AIndex: Integer; const AValue: TsNumFormatParams);
   protected
-    FWorkbook: TsWorkbook;
+    FFormatSettings: TFormatSettings;
     FClass: TsNumFormatParamsClass;
     procedure AddBuiltinFormats; virtual;
   public
-    constructor Create(AWorkbook: TsWorkbook; AOwnsData: Boolean);
+    constructor Create(AFormatSettings: TFormatSettings; AOwnsData: Boolean);
     destructor Destroy; override;
     function AddFormat(ASections: TsNumFormatSections): Integer; overload;
     function AddFormat(AFormatStr: String): Integer; overload;
@@ -35,7 +35,7 @@ type
     {@@ Workbook from which the number formats are collected in the list. It is
      mainly needed to get access to the FormatSettings for easy localization of
      some formatting strings. }
-    property Workbook: TsWorkbook read FWorkbook;
+//    property Workbook: TsWorkbook read FWorkbook;
   end;
 
 
@@ -216,13 +216,16 @@ begin
 end;
 
 
-{ TsNumFormatList }
+{ -----------------------------------------------------------------------------}
+{                           TsNumFormatList                                    }
+{ -----------------------------------------------------------------------------}
 
-constructor TsNumFormatList.Create(AWorkbook: TsWorkbook; AOwnsData: Boolean);
+constructor TsNumFormatList.Create(AFormatSettings: TFormatSettings;
+  AOwnsData: Boolean);
 begin
   inherited Create;
   FClass := TsNumFormatParams;
-  FWorkbook := AWorkbook;
+  FFormatSettings := AFormatSettings;
   FOwnsData := AOwnsData;
 end;
 
@@ -250,7 +253,7 @@ var
   newSections: TsNumFormatSections;
   i: Integer;
 begin
-  parser := TsNumFormatParser.Create(AFormatStr, FWorkbook.FormatSettings);
+  parser := TsNumFormatParser.Create(AFormatStr, FFormatSettings);
   try
     SetLength(newSections, parser.ParsedSectionCount);
     for i:=0 to High(newSections) do
@@ -301,7 +304,7 @@ function TsNumFormatList.Find(AFormatStr: String): Integer;
 var
   nfp: TsNumFormatParams;
 begin
-  nfp := CreateNumFormatParams(AFormatStr, FWorkbook.FormatSettings);
+  nfp := CreateNumFormatParams(AFormatStr, FFormatSettings);
   if nfp = nil then
     Result := -1
   else
