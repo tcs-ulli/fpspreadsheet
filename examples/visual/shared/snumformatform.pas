@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ButtonPanel,
   ExtCtrls, StdCtrls, Spin, Buttons, types, contnrs, inifiles,
-  fpsTypes, fpSpreadsheet;
+  fpsTypes, fpsNumFormat, fpSpreadsheet;
 
 type
   TsNumFormatCategory = (nfcNumber, nfcPercent, nfcScientific, nfcFraction,

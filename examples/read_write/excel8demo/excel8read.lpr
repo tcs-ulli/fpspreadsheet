@@ -36,31 +36,32 @@ begin
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
+  try
+    MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
+    MyWorkbook.ReadFromFile(InputFilename, sfExcel8);
+    MyWorksheet := MyWorkbook.GetFirstWorksheet;
 
-  MyWorkbook.ReadFromFile(InputFilename, sfExcel8);
+    // Write all cells with contents to the console
+    WriteLn('');
+    WriteLn('Contents of the first worksheet of the file:');
+    WriteLn('');
 
-  MyWorksheet := MyWorkbook.GetFirstWorksheet;
+    for CurCell in MyWorksheet.Cells do
+    begin
+      Write('Row: ', CurCell^.Row,
+       ' Col: ', CurCell^.Col, ' Value: ',
+       UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row,
+         CurCell^.Col))
+       );
+      if HasFormula(CurCell) then
+        WriteLn(' Formula: ', MyWorkSheet.ReadFormulaAsString(CurCell))
+      else
+        WriteLn;
+    end;
 
-  // Write all cells with contents to the console
-  WriteLn('');
-  WriteLn('Contents of the first worksheet of the file:');
-  WriteLn('');
-
-  for CurCell in MyWorksheet.Cells do
-  begin
-    Write('Row: ', CurCell^.Row,
-     ' Col: ', CurCell^.Col, ' Value: ',
-     UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row,
-       CurCell^.Col))
-     );
-    if HasFormula(CurCell) then
-      WriteLn(' Formula: ', MyWorkSheet.ReadFormulaAsString(CurCell))
-    else
-      WriteLn;
+  finally
+    // Finalization
+    MyWorkbook.Free;
   end;
-
-  // Finalization
-  MyWorkbook.Free;
 end.
 
