@@ -772,17 +772,7 @@ type
   {@@ TsSpreadWriter class reference type }
   TsSpreadWriterClass = class of TsBasicSpreadWriter;
 
-
 procedure CopyCellFormat(AFromCell, AToCell: PCell);
-procedure CopyCellValue(AFromCell, AToCell: PCell);
-
-//function SameCellBorders(ACell1, ACell2: PCell): Boolean; overload;
-function SameCellBorders(AFormat1, AFormat2: PsCellFormat): Boolean; //overload;
-
-function HasFormula(ACell: PCell): Boolean;
-
-{ For debugging purposes }
-procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
 
 
 implementation
@@ -849,35 +839,13 @@ begin
   else
   begin
     fmt := sourceSheet.ReadCellFormat(AFromCell);
-    //destSheet.WriteCellFormat(AToCell, fmt);
-    {
-    if (uffBackground in fmt.UsedFormattingFields) then
-    begin
-      clr := sourceSheet.Workbook.GetPaletteColor(fmt.Background.BgColor);
-      fmt.Background.BgColor := destSheet.Workbook.AddColorToPalette(clr);
-      clr := sourceSheet.Workbook.GetPaletteColor(fmt.Background.FgColor);
-      fmt.Background.FgColor := destSheet.Workbook.AddColorToPalette(clr);
-    end;
-    }
     if (uffFont in fmt.UsedFormattingFields) then
     begin
       font := sourceSheet.ReadCellFont(AFromCell);
-      {
-      clr := sourceSheet.Workbook.GetPaletteColor(font.Color);
-      font.Color := destSheet.Workbook.AddColorToPalette(clr);
-      }
       fmt.FontIndex := destSheet.Workbook.FindFont(font.FontName, font.Size, font.Style, font.Color);
       if fmt.FontIndex = -1 then
         fmt.FontIndex := destSheet.Workbook.AddFont(font.FontName, font.Size, font.Style, font.Color);
     end;
-    {
-    if (uffBorder in fmt.UsedFormattingFields) then
-      for cb in fmt.Border do
-      begin
-        clr := sourceSheet.Workbook.GetPaletteColor(fmt.BorderStyles[cb].Color);
-        fmt.BorderStyles[cb].Color := destSheet.Workbook.AddColorToPalette(clr);
-      end;
-      }
     if (uffNumberformat in fmt.UsedFormattingFields) then
     begin
       numFmtParams := sourceSheet.Workbook.GetNumberFormat(fmt.NumberFormatIndex);
@@ -892,76 +860,6 @@ begin
   end;
 end;
 
-{@@ ----------------------------------------------------------------------------
-  Copies the value of a cell to another one. Does not copy the formula, erases
-  the formula of the destination cell if there is one!
-
-  @param  AFromCell   Cell from which the value is to be copied
-  @param  AToCell     Cell to which the value is to be copied
--------------------------------------------------------------------------------}
-procedure CopyCellValue(AFromCell, AToCell: PCell);
-begin
-  Assert(AFromCell <> nil);
-  Assert(AToCell <> nil);
-
-  AToCell^.ContentType := AFromCell^.ContentType;
-  AToCell^.NumberValue := AFromCell^.NumberValue;
-  AToCell^.DateTimeValue := AFromCell^.DateTimeValue;
-  AToCell^.BoolValue := AFromCell^.BoolValue;
-  AToCell^.ErrorValue := AFromCell^.ErrorValue;
-  AToCell^.UTF8StringValue := AFromCell^.UTF8StringValue;
-  AToCell^.FormulaValue := '';    // This is confirmed with Excel
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks whether two format records have same border attributes
-
-  @param  AFormat1  Pointer to the first one of the two format records to be compared
-  @param  AFormat2  Pointer to the second one of the two format records to be compared
--------------------------------------------------------------------------------}
-function SameCellBorders(AFormat1, AFormat2: PsCellFormat): Boolean;
-
-  function NoBorder(AFormat: PsCellFormat): Boolean;
-  begin
-    Result := (AFormat = nil) or
-      not (uffBorder in AFormat^.UsedFormattingFields) or
-      (AFormat^.Border = []);
-  end;
-
-var
-  nobrdr1, nobrdr2: Boolean;
-  cb: TsCellBorder;
-begin
-  nobrdr1 := NoBorder(AFormat1);
-  nobrdr2 := NoBorder(AFormat2);
-  if (nobrdr1 and nobrdr2) then
-    Result := true
-  else
-  if (nobrdr1 and (not nobrdr2) ) or ( (not nobrdr1) and nobrdr2) then
-    Result := false
-  else begin
-    Result := false;
-    if AFormat1^.Border <> AFormat2^.Border then
-      exit;
-    for cb in TsCellBorder do begin
-      if AFormat1^.BorderStyles[cb].LineStyle <> AFormat2^.BorderStyles[cb].LineStyle then
-        exit;
-      if AFormat1^.BorderStyles[cb].Color <> AFormat2^.BorderStyles[cb].Color then
-        exit;
-    end;
-    Result := true;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Returns TRUE if the cell contains a formula.
-
-  @param   ACell   Pointer to the cell checked
--------------------------------------------------------------------------------}
-function HasFormula(ACell: PCell): Boolean;
-begin
-  Result := Assigned(ACell) and (Length(ACell^.FormulaValue) > 0);
-end;
 
 function CompareCells(Item1, Item2: Pointer): Integer;
 begin
@@ -985,42 +883,6 @@ begin
   Result := LongInt(PsCellRange(Item1)^.Row1) - PsCellRange(Item2)^.Row1;
   if Result = 0 then
     Result := LongInt(PsCellRange(Item1)^.Col1) - PsCellRange(Item2)^.Col1;
-end;
-
-
-{@@ ----------------------------------------------------------------------------
-  Write the fonts stored for a given workbook to a file.
-  FOR DEBUGGING ONLY.
--------------------------------------------------------------------------------}
-procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
-var
-  L: TStringList;
-  i: Integer;
-  fnt: TsFont;
-begin
-  L := TStringList.Create;
-  try
-    for i:=0 to AWorkbook.GetFontCount-1 do begin
-      fnt := AWorkbook.GetFont(i);
-      if fnt = nil then
-        L.Add(Format('#%.3d: ---------------', [i]))
-      else
-        L.Add(Format('#%.3d: %-15s %4.1f %s%s%s%s %s', [
-          i,
-          fnt.FontName,
-          fnt.Size,
-          IfThen(fssBold in fnt.Style, 'b', '.'),
-          IfThen(fssItalic in fnt.Style, 'i', '.'),
-          IfThen(fssUnderline in fnt.Style, 'u', '.'),
-          IfThen(fssStrikeOut in fnt.Style, 's', '.'),
-          ColorToHTMLColorStr(fnt.Color)
-          //AWorkbook.GetPaletteColorAsHTMLStr(fnt.Color)
-        ]));
-    end;
-    L.SaveToFile(AFileName);
-  finally
-    L.Free;
-  end;
 end;
 
 

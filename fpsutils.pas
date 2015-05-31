@@ -167,6 +167,10 @@ procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
 procedure InitFormatRecord(out AValue: TsCellFormat);
 procedure InitPageLayout(out APageLayout: TsPageLayout);
 
+procedure CopyCellValue(AFromCell, AToCell: PCell);
+function HasFormula(ACell: PCell): Boolean;
+function SameCellBorders(AFormat1, AFormat2: PsCellFormat): Boolean;
+
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: String); inline; overload;
@@ -176,11 +180,11 @@ procedure Unused(const A1);
 procedure Unused(const A1, A2);
 procedure Unused(const A1, A2, A3);
 
-
 var
   {@@ Default value for the screen pixel density (pixels per inch). Is needed
   for conversion of distances to pixels}
   ScreenPixelsPerInch: Integer = 96;
+
   {@@ FPC format settings for which all strings have been converted to UTF8 }
   UTF8FormatSettings: TFormatSettings;
 
@@ -2339,6 +2343,77 @@ begin
     Options := [];
     for i:=0 to 2 do Headers[i] := '';
     for i:=0 to 2 do Footers[i] := '';
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies the value of a cell to another one. Does not copy the formula, erases
+  the formula of the destination cell if there is one!
+
+  @param  AFromCell   Cell from which the value is to be copied
+  @param  AToCell     Cell to which the value is to be copied
+-------------------------------------------------------------------------------}
+procedure CopyCellValue(AFromCell, AToCell: PCell);
+begin
+  Assert(AFromCell <> nil);
+  Assert(AToCell <> nil);
+
+  AToCell^.ContentType := AFromCell^.ContentType;
+  AToCell^.NumberValue := AFromCell^.NumberValue;
+  AToCell^.DateTimeValue := AFromCell^.DateTimeValue;
+  AToCell^.BoolValue := AFromCell^.BoolValue;
+  AToCell^.ErrorValue := AFromCell^.ErrorValue;
+  AToCell^.UTF8StringValue := AFromCell^.UTF8StringValue;
+  AToCell^.FormulaValue := '';    // This is confirmed with Excel
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns TRUE if the cell contains a formula.
+
+  @param   ACell   Pointer to the cell checked
+-------------------------------------------------------------------------------}
+function HasFormula(ACell: PCell): Boolean;
+begin
+  Result := Assigned(ACell) and (Length(ACell^.FormulaValue) > 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether two format records have same border attributes
+
+  @param  AFormat1  Pointer to the first one of the two format records to be compared
+  @param  AFormat2  Pointer to the second one of the two format records to be compared
+-------------------------------------------------------------------------------}
+function SameCellBorders(AFormat1, AFormat2: PsCellFormat): Boolean;
+
+  function NoBorder(AFormat: PsCellFormat): Boolean;
+  begin
+    Result := (AFormat = nil) or
+      not (uffBorder in AFormat^.UsedFormattingFields) or
+      (AFormat^.Border = []);
+  end;
+
+var
+  nobrdr1, nobrdr2: Boolean;
+  cb: TsCellBorder;
+begin
+  nobrdr1 := NoBorder(AFormat1);
+  nobrdr2 := NoBorder(AFormat2);
+  if (nobrdr1 and nobrdr2) then
+    Result := true
+  else
+  if (nobrdr1 and (not nobrdr2) ) or ( (not nobrdr1) and nobrdr2) then
+    Result := false
+  else begin
+    Result := false;
+    if AFormat1^.Border <> AFormat2^.Border then
+      exit;
+    for cb in TsCellBorder do begin
+      if AFormat1^.BorderStyles[cb].LineStyle <> AFormat2^.BorderStyles[cb].LineStyle then
+        exit;
+      if AFormat1^.BorderStyles[cb].Color <> AFormat2^.BorderStyles[cb].Color then
+        exit;
+    end;
+    Result := true;
   end;
 end;
 

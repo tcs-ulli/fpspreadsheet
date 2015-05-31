@@ -59,18 +59,6 @@ const
 
 
 type
-                       (*
-  {@@ Possible encodings for a non-unicode encoded text }
-  TsEncoding = (
-    seLatin1,
-    seLatin2,
-    seCyrillic,
-    seGreek,
-    seTurkish,
-    seHebrew,
-    seArabic,
-    seUTF16
-    );            *)
 
   {@@ Tokens to identify the <b>elements in an expanded formula</b>.
 
@@ -122,7 +110,6 @@ type
     ElementKind: TFEKind;
     Row, Row2: Cardinal;   // zero-based
     Col, Col2: Cardinal;   // zero-based
-//    Param1, Param2: Word;  // Extra parameters
     DoubleValue: double;
     IntValue: Word;
     StringValue: String;
@@ -150,11 +137,7 @@ type
 
   {@@ Pointer to a TsComment record }
   PsComment = ^TsComment;
-                    (*
-  {@@ Specifies whether a hyperlink refers to an internal cell address
-      within the current workbook, or a URI (file://, http://, mailto, etc). }
-  TsHyperlinkKind = (hkNone, hkInternal, hkURI);
-                      *)
+
   {@@ The record TsHyperlink contains info on a hyperlink in a cell
     @param   Row          Row index of the cell containing the hyperlink
     @param   Col          Column index of the cell containing the hyperlink
@@ -197,17 +180,17 @@ type
   TsUsedFormattingFields = set of TsUsedFormattingField;
 
 const
-  { @@ Codes for curreny format according to FormatSettings.CurrencyFormat:
-       "C" = currency symbol, "V" = currency value, "S" = space character
-       For the negative value formats, we use also:
-       "B" = bracket, "M" = Minus
+  {@@ Codes for curreny format according to FormatSettings.CurrencyFormat:
+      "C" = currency symbol, "V" = currency value, "S" = space character
+      For the negative value formats, we use also:
+      "B" = bracket, "M" = Minus
 
-       The order of these characters represents the order of these items.
+      The order of these characters represents the order of these items.
 
-       Example: 1000 dollars  --> "$1000"  for pCV,   or "1000 $"  for pVsC
-               -1000 dollars --> "($1000)" for nbCVb, or "-$ 1000" for nMCSV
+      Example: 1000 dollars  --> "$1000"  for pCV,   or "1000 $"  for pVsC
+              -1000 dollars --> "($1000)" for nbCVb, or "-$ 1000" for nMCSV
 
-       Assignment taken from "sysstr.inc" }
+      Assignment taken from "sysstr.inc" }
   pcfDefault = -1;   // use value from Worksheet.FormatSettings.CurrencyFormat
   pcfCV      = 0;    // $1000
   pcfVC      = 1;    // 1000$

@@ -220,7 +220,7 @@ type
 implementation
 
 uses
-  StrUtils;
+  StrUtils, fpsUtils;
 
 const
   InsertColRowSheet = 'InsertDelete_ColumnsRows';
