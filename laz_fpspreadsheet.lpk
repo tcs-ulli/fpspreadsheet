@@ -16,6 +16,8 @@
           <UseAnsiStrings Value="False"/>
         </SyntaxOptions>
       </Parsing>
+      <Linking>
+      </Linking>
       <Other>
         <CompilerMessages>
           <IgnoredMessages idx5028="True" idx4055="True" idx2005="True"/>
