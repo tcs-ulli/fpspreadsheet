@@ -16,9 +16,6 @@
         </SyntaxOptions>
       </Parsing>
       <Linking>
-        <Debugging>
-          <DebugInfoType Value="dsStabs"/>
-        </Debugging>
       </Linking>
       <Other>
         <CompilerMessages>
