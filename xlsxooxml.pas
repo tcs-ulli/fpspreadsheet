@@ -2559,11 +2559,11 @@ begin
           lCell.ContentType := cctUTF8String;
           lCell.UTF8StringValue := VarToStrDef(value, '');
         end else
-        if VarIsBool(value) then
+        {if VarIsBool(value) then
         begin
           lCell.ContentType := cctBool;
           lCell.BoolValue := value <> 0;
-        end;
+        end};
         WriteCellToStream(AStream, @lCell);
         varClear(value);
       end;
