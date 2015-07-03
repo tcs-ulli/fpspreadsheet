@@ -944,10 +944,11 @@ end;
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.CalcColWidth(AWidth: Single): Integer;
 var
-  w0: Integer;
+  w0: Integer = 10;
 begin
   Convert_sFont_to_Font(Workbook.GetFont(0), Canvas.Font);
-  w0 := Canvas.TextWidth('0');
+  if HandleAllocated then
+    w0 := Canvas.TextWidth('0');
   Result := Round(AWidth * w0);
 end;
 
@@ -3746,7 +3747,8 @@ begin
       RowCount := FInitRowCount + 1; //2;
       FixedCols := 1;
       FixedRows := 1;
-      ColWidths[0] := Canvas.TextWidth(' 999999 ');
+      if HandleAllocated then
+        ColWidths[0] := Canvas.TextWidth(' 999999 ');
     end else begin
       FixedCols := 0;
       FixedRows := 0;
