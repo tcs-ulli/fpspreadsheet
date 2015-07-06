@@ -1,8 +1,6 @@
-{ fpspreadsheetctrls }
-
 {@@ ----------------------------------------------------------------------------
-  Unit fpspreadsheetctrls implements some visual controls which help to create
-  a spreadsheet application without writing too much code.
+  Unit fpspreadsheetctrls implements some <b>visual controls</b> which help
+  to create a spreadsheet application without writing too much code.
 
   AUTHORS: Werner Pamler
 
@@ -10,14 +8,17 @@
            distribution, for details about the license.
 
   EXAMPLE
-  * Add a WorkbookSource component to the form.
-  * Add a WorksheetTabControl
-  * Add a WorksheetGrid (from unit fpspreadsheetgrid)
-  * Link their WorkbookSource properties to the added WorkbookSource component
-  * Set the property FileName of the WorkbookSource to a spreadsheet file.
+  * Add a <i>WorkbookSource</i> component to the form.
+  * Add a <i>WorksheetTabControl</i>
+  * Add a <i>WorksheetGrid</i> (from unit fpspreadsheetgrid)
+  * Link their <i>WorkbookSource</i> properties to the added
+    <i>WorkbookSource</i> component
+  * Set the property <i>FileName</i> of the </i>WorkbookSource</i> to a
+    spreadsheet file.
 
-  --> The WorksheetTabControl displays tabs for each worksheet in the file, and
-      the WorksheetGrid displays the worksheet according to the selected tab.
+  As a result, the <i>WorksheetTabControl</i> displays tabs for each worksheet
+  in the file, and the <i>WorksheetGrid</i> displays the worksheet according to
+  the selected tab.
 -------------------------------------------------------------------------------}
 unit fpspreadsheetctrls;
 
@@ -164,6 +165,9 @@ const
 
 type
   { IsSpreadsheetControl }
+
+  {@@ Interface which allows the workbook source to notify linked controls of
+    changes in the associated workbook. }
   IsSpreadsheetControl = interface [GUID_SpreadsheetControl]
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);

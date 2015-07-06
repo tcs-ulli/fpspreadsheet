@@ -206,17 +206,17 @@ implementation
 
 uses
   variants, fileutil, strutils, math, lazutf8, uriparser,
-  {%H-}fpsPatches, fpsStrings, fpsStreams, fpsNumFormatParser;
+  {%H-}fpsPatches, fpsStrings, fpsStreams, fpsNumFormatParser, fpsClasses;
 
 const
   { OOXML general XML constants }
-     XML_HEADER               = '<?xml version="1.0" encoding="utf-8" ?>';
+     XML_HEADER           = '<?xml version="1.0" encoding="utf-8" ?>';
 
   { OOXML Directory structure constants }
   // Note: directory separators are always / because the .xlsx is a zip file which
   // requires / instead of \, even on Windows; see 
   // http://www.pkware.com/documents/casestudies/APPNOTE.TXT
-  // 4.4.17.1 All slashes MUST be forward slashes '/' as opposed to backwards slashes '\'
+  // 4.4.17.1 All slashes MUST be forward slashes '/' as opposed to backward slashes '\'
      OOXML_PATH_TYPES              = '[Content_Types].xml';
 {%H-}OOXML_PATH_RELS               = '_rels/';
      OOXML_PATH_RELS_RELS          = '_rels/.rels';
@@ -2559,11 +2559,11 @@ begin
           lCell.ContentType := cctUTF8String;
           lCell.UTF8StringValue := VarToStrDef(value, '');
         end else
-        {if VarIsBool(value) then
+        if VarIsBool(value) then
         begin
           lCell.ContentType := cctBool;
           lCell.BoolValue := value <> 0;
-        end};
+        end;
         WriteCellToStream(AStream, @lCell);
         varClear(value);
       end;

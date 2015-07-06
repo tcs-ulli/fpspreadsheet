@@ -33,20 +33,12 @@ type
     // Test reconstruction of formula strings
     procedure Test_Write_Read_FormulaStrings(AFormat: TsSpreadsheetFormat;
       UseRPNFormula: Boolean);
-    {
-    // Test reconstruction of shared formula strings
-    procedure Test_Write_Read_SharedFormulaStrings(AFormat: TsSpreadsheetFormat);
-    // Test calculation of formulas
-    }
     procedure Test_Write_Read_CalcFormulas(AFormat: TsSpreadsheetformat;
       UseRPNFormula: Boolean);
-    {
-    // Test calculation of shared formulas
-    procedure Test_Write_Read_CalcSharedFormulas(AFormat: TsSpreadsheetformat);
-    }
 
   published
     // Writes out formulas & reads them back.
+
     { BIFF2 Tests }
     procedure Test_Write_Read_FormulaStrings_BIFF2;
     { BIFF5 Tests }
@@ -57,19 +49,6 @@ type
     procedure Test_Write_Read_FormulaStrings_OOXML;
     { ODS Tests }
     procedure Test_Write_Read_FormulaStrings_ODS;
-
-    (*
-    // Writes out shared formulas & reads them back.
-    { BIFF2 Tests }
-    procedure Test_Write_Read_SharedFormulaStrings_BIFF2;
-    { BIFF2 Tests }
-    procedure Test_Write_Read_SharedFormulaStrings_BIFF5;
-    { BIFF8 Tests }
-    procedure Test_Write_Read_SharedFormulaStrings_BIFF8;
-    { OOXML Tests }
-    procedure Test_Write_Read_SharedFormulaStrings_OOXML;
-    { ODS Tests }
-    procedure Test_Write_Read_SharedFormulaStrings_ODS; *)
 
     // Writes out and calculates rpn formulas, read back
     { BIFF2 Tests }
@@ -94,18 +73,6 @@ type
     procedure Test_Write_Read_CalcStringFormula_OOXML;
     { ODS Tests }
     procedure Test_Write_Read_CalcStringFormula_ODS;
-                                                          (*
-    // Writes out and calculates shared formulas, read back
-    { BIFF2 Tests }
-    procedure Test_Write_Read_CalcSharedFormula_BIFF2;
-    { BIFF5 Tests }
-    procedure Test_Write_Read_CalcSharedFormula_BIFF5;
-    { BIFF8 Tests }
-    procedure Test_Write_Read_CalcSharedFormula_BIFF8;
-    { OOXML Tests }
-    procedure Test_Write_Read_CalcSharedFormula_OOXML;
-    { ODS Tests }
-    procedure Test_Write_Read_CalcSharedFormula_ODS;        *)
 
   end;
 
@@ -171,7 +138,6 @@ begin
     // Write out all test formulas
     // All formulas are in column B
     {$I testcases_calcrpnformula.inc}
-//    WriteRPNFormulaSamples(MyWorksheet, AFormat, true, UseRPNFormula);
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
     MyWorkbook.Free;

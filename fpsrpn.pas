@@ -1,6 +1,6 @@
 {@@ ----------------------------------------------------------------------------
-  The unit fpsRPN contains methods for simple creation of an RPNFormula array
-  to be used in fpspreadsheet.
+  The unit fpsRPN contains methods for simple creation of an <b>RPNFormula</b>
+  array to be used in fpspreadsheet.
 
   AUTHORS: Werner Pamler
 

@@ -110,6 +110,7 @@ type
     procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure FormDropFiles(Sender: TObject; const FileNames: array of String);
     procedure FormShow(Sender: TObject);
     procedure GridClick(Sender: TObject);
     procedure HexGridPrepareCanvas(sender: TObject; aCol, aRow: Integer;
@@ -677,6 +678,13 @@ begin
 end;
 
 
+procedure TMainForm.FormDropFiles(Sender: TObject;
+  const FileNames: array of String);
+begin
+  LoadFile(FileNames[0]);
+end;
+
+
 procedure TMainForm.FormShow(Sender: TObject);
 begin
   Width := Width + 1;     // remove black rectangle next to ValueGrid
@@ -1201,10 +1209,13 @@ begin
       if recType = $003C then begin // CONTINUE record
         prevnode := BIFFTree.GetPrevious(node);
         prevdata := GetNodeData(prevnode);
-        if prevdata.RecordID = $01B6 then // TXO record
+        if prevdata.RecordID = $00FC then  // SST record
+          data.Tag := BIFFNODE_SST_CONTINUE
+        else
+        if prevdata.RecordID = $01B6 then  // TXO record
           data.Tag := BIFFNODE_TXO_CONTINUE1
         else
-        if prevdata.RecordID = $003C then // CONTINUE record
+        if prevdata.RecordID = $003C then  // CONTINUE record
         begin
           prevnode := BIFFTree.GetPrevious(prevnode);
           prevdata := GetNodeData(prevnode);

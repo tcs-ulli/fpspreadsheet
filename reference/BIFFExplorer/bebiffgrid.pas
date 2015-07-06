@@ -19,6 +19,9 @@ type
     FBufferIndex: LongWord;
     FFormat: TsSpreadsheetFormat;
     FInfo: Integer;
+    FTotalSST: Integer;
+    FCounterSST: Integer;
+    FPendingCharCount: Integer;
     FCurrRow: Integer;
     FDetails: TStrings;
     FOnDetails: TBIFFDetailsEvent;
@@ -125,8 +128,11 @@ type
     procedure DoExtractDetails;
     function DoMouseWheelDown(Shift: TShiftState; MousePos: TPoint): Boolean; override;
     function DoMouseWheelUp(Shift: TShiftState; MousePos: TPoint): Boolean; override;
+    procedure ExtractString(ABufIndex: Integer; AUnicode: Boolean;
+      ACharCount: Integer; out AString: String; out ANumbytes: Integer); overload;
     procedure ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
-      out AString: String; out ANumBytes: Integer; IgnoreCompressedFlag: Boolean = false);
+      out AString: String; out ANumBytes: Integer;
+      IgnoreCompressedFlag: Boolean = false); overload;
     procedure PopulateGrid;
     procedure ShowInRow(var ARow: Integer; var AOffs: LongWord; ASize: Word;
       AValue,ADescr: String; ADescrOnly: Boolean = false);
@@ -171,6 +177,7 @@ begin
     - [goVertLine, goSmoothScroll];
   MouseWheelOption := mwGrid;
   FDetails := TStringList.Create;
+  FPendingCharCount := -1;
 end;
 
 
@@ -211,18 +218,67 @@ begin
   Click;
 end;
 
+{ Reads a string character array starting at ABufIndex. The string is supposed
+  to have ACharCount character, but less characters are read if the string
+  extends across the max size of a record and is continued in the next CONTINUE
+  record.
+  The string is assumed to be a UTF16 string if AUnicode=true, otherwise it is
+  an ansi string. }
+procedure TBIFFGrid.ExtractString(ABufIndex: Integer; AUnicode: Boolean;
+  ACharCount: Integer;out AString: String; out ANumbytes: Integer);
+var
+  sa: AnsiString;
+  sw: WideString;
+  n: Integer;
+begin
+  if AUnicode then   // uncompressed unicode --> 2 bytes per char
+  begin
+    if ABufIndex + ACharCount * SizeOf(WideChar) >= Length(FBuffer) then
+    begin
+      n := (Length(FBuffer) - ABufIndex) div SizeOf(WideChar);
+      FPendingCharCount := ACharCount - n;  // number of chars to be read from subsequent CONTINUE record
+    end else
+    begin
+      n := ACharCount;
+      FPendingCharCount := 0;
+    end;
+    SetLength(sw, n);
+    ANumBytes := n * SizeOf(WideChar);
+    Move(FBuffer[ABufIndex], sw[1], ANumBytes);
+    AString := UTF8Encode(WideStringLEToN(sw));
+  end else
+  begin   // ansi or compressed unicode
+    if ABufIndex + ACharCount >= Length(FBuffer) then
+    begin
+      n := Length(FBuffer) - ABufIndex;
+      FPendingCharCount := ACharCount - n;  // number of chars in subsequent CONTINUE record
+    end else
+    begin
+      n := ACharCount;
+      FPendingCharCount := 0;
+    end;
+    SetLength(sa, n);
+    ANumBytes := n;
+    Move(FBuffer[ABufIndex], sa[1], ANumBytes);
+    AString := AnsiToUTF8(sa);  // to do: use code page of file
+  end;
+end;
+
 procedure TBIFFGrid.ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
   out AString: String; out ANumBytes: Integer; IgnoreCompressedFlag: Boolean = false);
 var
-  ls: Integer;
-  sa: ansiString;
-  sw: WideString;
+  ls: Integer;    // Character count of string
   w: Word;
+  dw: DWord;
   optn: Byte;
+  n: Integer;     // Byte count in string character array
+  asianPhoneticBytes: DWord;
+  richRuns: Word;
+  offs: Integer;
 begin
   if Length(FBuffer) = 0 then begin
     AString := '';
-    ANumBytes := 0;
+      ANumBytes := 0;
     exit;
   end;
   if ALenBytes = 1 then
@@ -232,24 +288,35 @@ begin
     ls := WordLEToN(w);
   end;
   if AUnicode then begin
+    offs := ALenBytes;
     optn := FBuffer[ABufIndex + ALenBytes];
-    if (optn  and $01 = 0) and (not IgnoreCompressedFlag)
-    then begin   // compressed --> 1 byte per character
-      SetLength(sa, ls);
-      ANumbytes := ls*SizeOf(AnsiChar) + ALenBytes + 1;
-      Move(FBuffer[ABufIndex + ALenBytes + 1], sa[1], ls*SizeOf(AnsiChar));
-      AString := AnsiToUTF8(sa);
-    end else begin
-      SetLength(sw, ls);
-      ANumBytes := ls*SizeOf(WideChar) + ALenBytes + 1;
-      Move(FBuffer[ABufIndex + ALenBytes + 1], sw[1], ls*SizeOf(WideChar));
-      AString := UTF8Encode(WideStringLEToN(sw));
-    end;
-  end else begin
-    SetLength(sa, ls);
-    ANumBytes := ls*SizeOf(AnsiChar) + ALenBytes;
-    Move(FBuffer[ABufIndex + ALenBytes], sa[1], ls*SizeOf(AnsiChar));
-    AString := AnsiToUTF8(sa);
+    inc(offs, 1);
+    if optn and $08 <> 0 then  // rich text
+    begin
+      Move(FBuffer[ABufIndex + offs], w, 2);
+      richRuns := WordLEToN(w);
+      inc(offs, 2);
+    end else
+      richRuns := 0;
+    if optn and $04 <> 0 then  // Asian phonetic
+    begin
+      Move(FBuffer[ABufIndex + offs], dw, 4);
+      AsianPhoneticBytes := DWordLEToN(dw);
+      inc(offs, 4);
+    end else
+      asianPhoneticBytes := 0;
+    if (optn  and $01 = 0) and (not IgnoreCompressedFlag) then
+      // compressed --> 1 byte per character
+      ExtractString(ABufIndex + offs, false, ls, AString, n)
+    else
+      // non-compressed unicode
+      ExtractString(ABufIndex + offs, true, ls, AString, n);
+    ANumBytes := offs + n + richRuns * 4 + asianPhoneticBytes;
+  end else
+  begin
+    // ansi string
+    ExtractString(ABufIndex + ALenBytes, false, ls, AString, n);
+    ANumbytes := ALenBytes + n;
   end;
 end;
 
@@ -462,22 +529,9 @@ begin
   end;
 end;
 
- {
-procedure TBIFFGrid.SetRecordType(ARecType: Word; ABuffer: TBIFFBuffer;
-  AFormat: TsSpreadsheetFormat);
-begin
-  FFormat := AFormat;
-  FRecType := ARecType;
-  SetLength(FBuffer, Length(ABuffer));
-  if Length(FBuffer) > 0 then
-    Move(ABuffer[0], FBuffer[0], Length(FBuffer));
-  PopulateGrid;
-  if Assigned(FOnDetails) then FOnDetails(self, FDetails);
-end;
-}
 
-procedure TBIFFGrid.SetBIFFNodeData(AData: TBIFFNodeData; ABuffer: TBIFFBuffer;
-  AFormat: TsSpreadsheetFormat);
+procedure TBIFFGrid.SetBIFFNodeData(AData: TBIFFNodeData;
+  ABuffer: TBIFFBuffer; AFormat: TsSpreadsheetFormat);
 begin
   if AData = nil then
     exit;
@@ -490,6 +544,7 @@ begin
   PopulateGrid;
   if Assigned(FOnDetails) then FOnDetails(self, FDetails);
 end;
+
 
 procedure TBIFFGrid.ShowBackup;
 var
@@ -1184,6 +1239,8 @@ var
   w: Word;
   n: Integer;
   run: Integer;
+  total2: Integer;
+  optn: Byte;
 begin
   case FInfo of
     BIFFNODE_TXO_CONTINUE1:
@@ -1254,11 +1311,52 @@ begin
         inc(n);
 
         Move(FBuffer[FBufferIndex], w, numbytes);
-        ShowInrow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+        ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
           'Not used');
         inc(n);
 
         RowCount := FixedRows + n;
+      end;
+
+    BIFFNODE_SST_CONTINUE:
+      begin  // Continues an SST record
+        if FPendingCharCount = -1 then
+        begin
+          RowCount := FixedRows + 1;
+          ShowInRow(FCurrRow, FBufferIndex, 0, '', 'Please select preceding SST record first.');
+          exit;
+        end;
+
+        RowCount := FixedRows + FTotalSST;
+        n := 0;
+
+        optn := FBuffer[FBufferIndex];
+        if optn and $01 = $01 then  // wide characters
+          ExtractString(FBufferIndex+1, true, FPendingCharCount, s, numBytes)
+        else
+          ExtractString(FBufferIndex+1, false, FPendingCharCount, s, numbytes);
+        FPendingCharCount := -1;
+        inc(numbytes, 1);
+        ShowInRow(FCurrRow, FBufferIndex, numbytes, s, Format('Shared String #%d (rest)', [FCounterSST]));
+        inc(n);
+
+        FPendingCharCount := -1;
+
+        for i:=FCounterSST+1 to FTotalSST do
+        begin
+          FCounterSST := i;
+          ExtractString(FBufferIndex, 2, true, s, numBytes);
+          ShowInRow(FCurrRow, FBufferIndex, numBytes, s, Format('Shared string #%d', [i]));
+          inc(n);
+          if FPendingCharCount > 0 then
+          begin
+            FInfo := BIFFNODE_SST_CONTINUE;
+            break;
+          end;
+        end;
+        RowCount := FixedRows + n;
+        if FPendingCharCount = 0 then
+          FPendingCharCount := -1;
       end;
   end;
 end;
@@ -5097,13 +5195,14 @@ var
   numBytes: Integer;
   s: String;
   total1, total2: DWord;
-  i: Integer;
+  i, n: Integer;
 begin
   numBytes := 4;
   Move(FBuffer[FBufferIndex], total1, numBytes);
   Move(FBuffer[FBufferIndex+4], total2, numBytes);
   total1 := DWordLEToN(total1);
   total2 := DWordLEToN(total2);
+  FTotalSST := total2;
 
   RowCount := FixedRows + 2 + total2;
 
@@ -5112,10 +5211,22 @@ begin
   ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(total2),
     'Number of following strings');
 
-  for i:=1 to total2 do begin
-    ExtractString(FBufferIndex, 2, true, s, numBytes);
-    ShowInRow(FCurrRow, FBufferIndex, numBytes, s, Format('Shared string #%d', [i]));
+  FPendingCharCount := -1;
+  n := 0;
+  for i:=1 to FTotalSST do begin
+    FCounterSST := i;
+    ExtractString(FBufferIndex, 2, true, s, numBytes);  // BIFF8 only --> 2 length bytes
+    inc(n);
+    if FPendingCharCount = 0 then
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, s, Format('Shared string #%d', [i]))
+    else
+    begin
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, s, Format('Shared string #%d - partial (--> CONTINUE)', [i]));
+      FInfo := BIFFNODE_SST_CONTINUE;
+      break;
+    end;
   end;
+  RowCount := FixedRows + 2 + n;
 end;
 
 

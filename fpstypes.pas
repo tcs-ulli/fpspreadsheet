@@ -1,3 +1,12 @@
+{@@ ----------------------------------------------------------------------------
+  Unit fpsTypes collects the most <b>fundamental declarations</b> used
+  throughout the fpspreadsheet library.
+
+  AUTHORS: Werner Pamler
+
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+            distribution, for details about the license.
+-------------------------------------------------------------------------------}
 unit fpsTypes;
 
 {$mode objfpc}{$H+}
@@ -467,7 +476,7 @@ type
     coEqual, coNotEqual, coLess, coGreater, coLessEqual, coGreaterEqual
   );
 
-  {@@ Number/cell formatting. Only uses a subset of the default formats,
+  {@@ Builtin number formats. Only uses a subset of the default formats,
       enough to be able to read/write date/time values.
       nfCustom allows to apply a format string directly. }
   TsNumberFormat = (
@@ -554,28 +563,6 @@ type
   {@@ Pointer to a format record }
   PsCellFormat = ^TsCellFormat;
 
-  {@@ Specialized list for format records }
-  TsCellFormatList = class(TFPList)
-  private
-    FAllowDuplicates: Boolean;
-    function GetItem(AIndex: Integer): PsCellFormat;
-    procedure SetItem(AIndex: Integer; const AValue: PsCellFormat);
-  public
-    constructor Create(AAllowDuplicates: Boolean);
-    destructor Destroy; override;
-    function Add(const AItem: TsCellFormat): Integer; overload;
-    function Add(AItem: PsCellFormat): Integer; overload;
-    procedure Clear;
-    procedure Delete(AIndex: Integer);
-    function FindIndexOfID(ID: Integer): Integer;
-    function FindIndexOfName(AName: String): Integer;
-    function IndexOf(const AItem: TsCellFormat): Integer; overload;
-    property Items[AIndex: Integer]: PsCellFormat read GetItem write SetItem; default;
-  end;
-
-  {@@ Pointer to a TCell record }
-  PCell = ^TCell;
-
   {@@ Cell structure for TsWorksheet
       The cell record contains information on the location of the cell (row and
       column index), on the value contained (number, date, text, ...), on
@@ -608,15 +595,22 @@ type
       cctError      : (ErrorValue: TsErrorValue);
   end;
 
+  {@@ Pointer to a TCell record }
+  PCell = ^TCell;
+
+  {@@ Page orientation for printing }
   TsPageOrientation = (spoPortrait, spoLandscape);
 
+  {@@ Options for the print layout records }
   TsPrintOption = (poPrintGridLines, poPrintHeaders, poPrintPagesByRows,
     poMonochrome, poDraftQuality, poPrintCellComments, poDefaultOrientation,
     poUseStartPageNumber, poCommentsAtEnd, poHorCentered, poVertCentered,
     poDifferentOddEven, poDifferentFirst, poFitPages);
 
+  {@@ Set of options used by the page layout }
   TsPrintOptions = set of TsPrintOption;
 
+  {@@ Record defining parameters for printing by the Office applications }
   TsPageLayout = record      // all lengths in mm
     Orientation: TsPageOrientation;
     PageWidth: Double;       // for "normal" orientation (mostly portrait)
@@ -654,6 +648,7 @@ type
     Footers: array[0..2] of string;
   end;
 
+  {@@ Pointer to a page layout record }
   PsPageLayout = ^TsPageLayout;
 
 const
@@ -665,175 +660,6 @@ const
 
 
 implementation
-
-{ TsCellFormatList }
-
-constructor TsCellFormatList.Create(AAllowDuplicates: Boolean);
-begin
-  inherited Create;
-  FAllowDuplicates := AAllowDuplicates;
-end;
-
-destructor TsCellFormatList.Destroy;
-begin
-  Clear;
-  inherited;
-end;
-
-function TsCellFormatList.Add(const AItem: TsCellFormat): Integer;
-var
-  P: PsCellFormat;
-begin
-  if FAllowDuplicates then
-    Result := -1
-  else
-    Result := IndexOf(AItem);
-  if Result = -1 then begin
-    New(P);
-    P^.Name := AItem.Name;
-    P^.ID := AItem.ID;
-    P^.UsedFormattingFields := AItem.UsedFormattingFields;
-    P^.FontIndex := AItem.FontIndex;
-    P^.TextRotation := AItem.TextRotation;
-    P^.HorAlignment := AItem.HorAlignment;
-    P^.VertAlignment := AItem.VertAlignment;
-    P^.Border := AItem.Border;
-    P^.BorderStyles := AItem.BorderStyles;
-    P^.Background := AItem.Background;
-    P^.NumberFormatIndex := AItem.NumberFormatIndex;
-    P^.NumberFormat := AItem.NumberFormat;
-    P^.NumberFormatStr := AItem.NumberFormatStr;
-    Result := inherited Add(P);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Adds a pointer to a FormatRecord to the list. Allows nil for the predefined
-  formats which are not stored in the file.
--------------------------------------------------------------------------------}
-function TsCellFormatList.Add(AItem: PsCellFormat): Integer;
-begin
-  if AItem = nil then
-    Result := inherited Add(AItem)
-  else
-    Result := Add(AItem^);
-end;
-
-procedure TsCellFormatList.Clear;
-var
-  i: Integer;
-begin
-  for i:=Count-1 downto 0 do
-    Delete(i);
-  inherited;
-end;
-
-procedure TsCellFormatList.Delete(AIndex: Integer);
-var
-  P: PsCellFormat;
-begin
-  P := GetItem(AIndex);
-  if P <> nil then
-    Dispose(P);
-  inherited Delete(AIndex);
-end;
-
-function TsCellFormatList.GetItem(AIndex: Integer): PsCellFormat;
-begin
-  Result := inherited Items[AIndex];
-end;
-
-function TsCellFormatList.FindIndexOfID(ID: Integer): Integer;
-var
-  P: PsCellFormat;
-begin
-  for Result := 0 to Count-1 do
-  begin
-    P := GetItem(Result);
-    if (P <> nil) and (P^.ID = ID) then
-      exit;
-  end;
-  Result := -1;
-end;
-
-function TsCellFormatList.FindIndexOfName(AName: String): Integer;
-var
-  P: PsCellFormat;
-begin
-  for Result := 0 to Count-1 do
-  begin
-    P := GetItem(Result);
-    if (P <> nil) and (P^.Name = AName) then
-      exit;
-  end;
-  Result := -1;
-end;
-
-function TsCellFormatList.IndexOf(const AItem: TsCellFormat): Integer;
-var
-  P: PsCellFormat;
-  equ: Boolean;
-  b: TsCellBorder;
-begin
-  for Result := 0 to Count-1 do
-  begin
-    P := GetItem(Result);
-    if (P = nil) then continue;
-
-    if (P^.UsedFormattingFields <> AItem.UsedFormattingFields) then continue;
-
-    if (uffFont in AItem.UsedFormattingFields) then
-      if (P^.FontIndex) <> (AItem.FontIndex) then continue;
-
-    if (uffTextRotation in AItem.UsedFormattingFields) then
-      if (P^.TextRotation <> AItem.TextRotation) then continue;
-
-    if (uffHorAlign in AItem.UsedFormattingFields) then
-      if (P^.HorAlignment <> AItem.HorAlignment) then continue;
-
-    if (uffVertAlign in AItem.UsedFormattingFields) then
-      if (P^.VertAlignment <> AItem.VertAlignment) then continue;
-
-    if (uffBorder in AItem.UsedFormattingFields) then
-      if (P^.Border <> AItem.Border) then continue;
-
-    // Border styles can be set even if borders are not used --> don't check uffBorder!
-    equ := true;
-    for b in AItem.Border do begin
-      if (P^.BorderStyles[b].LineStyle <> AItem.BorderStyles[b].LineStyle) or
-         (P^.BorderStyles[b].Color <> Aitem.BorderStyles[b].Color)
-      then begin
-        equ := false;
-        break;
-      end;
-    end;
-    if not equ then continue;
-
-    if (uffBackground in AItem.UsedFormattingFields) then begin
-      if (P^.Background.Style <> AItem.Background.Style) then continue;
-      if (P^.Background.BgColor <> AItem.Background.BgColor) then continue;
-      if (P^.Background.FgColor <> AItem.Background.FgColor) then continue;
-    end;
-
-    if (uffNumberFormat in AItem.UsedFormattingFields) then begin
-      if (P^.NumberFormatIndex <> AItem.NumberFormatIndex) then continue;
-      if (P^.NumberFormat <> AItem.NumberFormat) then continue;
-      if (P^.NumberFormatStr <> AItem.NumberFormatStr) then continue;
-    end;
-
-    // If we arrive here then the format records match.
-    exit;
-  end;
-
-  // We get here if no record matches
-  Result := -1;
-end;
-
-procedure TsCellFormatList.SetItem(AIndex: Integer; const AValue: PsCellFormat);
-begin
-  inherited Items[AIndex] := AValue;
-end;
-
 
 end.
 

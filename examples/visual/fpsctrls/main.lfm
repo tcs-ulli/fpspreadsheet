@@ -83,9 +83,9 @@ object MainForm: TMainForm
         'FileFormat=sfExcel8'
         'ActiveWorksheet=Sheet1'
         'Options=boAutoCalc, boCalcBeforeSaving, boReadFormulas'
-        'FormatSettings='
+        '(-) FormatSettings='
         '  ThousandSeparator=.'
-        '  DecimalSeparator=.'
+        '  DecimalSeparator=,'
         '  ListSeparator=;'
         '  DateSeparator=.'
         '  TimeSeparator=:'
@@ -3796,7 +3796,6 @@ object MainForm: TMainForm
       Caption = 'File'
       object MenuItem50: TMenuItem
         Action = AcFileOpen
-        Caption = '&Open ...x'
         Bitmap.Data = {
           36040000424D3604000000000000360000002800000010000000100000000100
           2000000000000004000064000000640000000000000000000000FFFFFF00FFFF

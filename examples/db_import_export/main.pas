@@ -450,12 +450,13 @@ procedure TForm1.ExportUsingVirtualMode(var DataFileName: string);
 var
   worksheet: TsWorksheet;
 begin
+  {
   if FILE_FORMATS[RgFileFormat.ItemIndex] = sfOpenDocument then
   begin
     MessageDlg('Virtual mode is not yet implemented for .ods files.', mtError, [mbOK], 0);
     exit;
   end;
-
+   }
   FExportDataset.Open;
 
   FWorkbook := TsWorkbook.Create;

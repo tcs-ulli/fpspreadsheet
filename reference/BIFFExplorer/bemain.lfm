@@ -3,6 +3,7 @@ object MainForm: TMainForm
   Height = 576
   Top = 177
   Width = 1089
+  AllowDropFiles = True
   Caption = 'BIFF Explorer'
   ClientHeight = 556
   ClientWidth = 1089
@@ -10,6 +11,7 @@ object MainForm: TMainForm
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  OnDropFiles = FormDropFiles
   OnShow = FormShow
   ShowHint = True
   LCLVersion = '1.5'
@@ -71,9 +73,9 @@ object MainForm: TMainForm
       Height = 506
       Top = 0
       Width = 665
-      ActivePage = PgValues
+      ActivePage = PgAnalysis
       Align = alClient
-      TabIndex = 1
+      TabIndex = 0
       TabOrder = 0
       OnChange = PageControlChange
       object PgAnalysis: TTabSheet
@@ -119,6 +121,7 @@ object MainForm: TMainForm
           ColCount = 3
           DefaultColWidth = 100
           FixedCols = 0
+          MouseWheelOption = mwGrid
           Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goColSizing, goThumbTracking, goSmoothScroll]
           RowCount = 9
           TabOrder = 0
@@ -162,6 +165,7 @@ object MainForm: TMainForm
             ColCount = 17
             DefaultColWidth = 28
             ExtendedSelect = False
+            MouseWheelOption = mwGrid
             Options = [goFixedVertLine, goFixedHorzLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goThumbTracking, goSmoothScroll]
             ParentFont = False
             TabOrder = 0
@@ -249,6 +253,7 @@ object MainForm: TMainForm
             AutoFillColumns = True
             ColCount = 16
             FixedCols = 0
+            MouseWheelOption = mwGrid
             Options = [goFixedVertLine, goFixedHorzLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goThumbTracking, goSmoothScroll]
             ParentFont = False
             TabOrder = 1

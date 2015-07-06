@@ -227,6 +227,7 @@ const
   INT_EXCEL_SHEET_FUNC_ACOSH      = 233;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_ATANH      = 234;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_INFO       = 244;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_ERRORTYPE  = 261;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_AVEDEV     = 269;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_BETADIST   = 270;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_BETAINV    = 272;  // not available in BIFF2

@@ -15,27 +15,34 @@ type
 
   TForm1 = class(TForm)
     Bevel1: TBevel;
+    BtnSaveResults: TButton;
     BtnWrite: TButton;
     BtnRead: TButton;
     CgFormats: TCheckGroup;
     CgRowCount: TCheckGroup;
     CbVirtualModeOnly: TCheckBox;
+    CbSingleCol: TCheckBox;
     LblCancel: TLabel;
     Panel1: TPanel;
     Memo: TMemo;
     ParameterPanel: TPanel;
     RgContent: TRadioGroup;
+    SaveDialog: TSaveDialog;
     StatusBar: TStatusBar;
     procedure BtnReadClick(Sender: TObject);
+    procedure BtnSaveResultsClick(Sender: TObject);
     procedure BtnWriteClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: char);
   private
     { private declarations }
     FDir: String;
     FEscape: Boolean;
     FCurFormat: TsSpreadsheetFormat;
+    FErrCounter: Integer;
+    FErrLog: TStringList;
     procedure EnableControls(AEnable: Boolean);
     function  GetRowCount(AIndex: Integer): Integer;
     procedure ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
@@ -87,6 +94,13 @@ const
   SPREAD_FORMAT: array[0..4] of TsSpreadsheetFormat = (sfOpenDocument, sfOOXML, sfExcel8, sfExcel5, sfExcel2);
 
   COLCOUNT = 100;
+
+function LeftPad(AText: String; ALength: Integer): String;
+begin
+  Result := AText;
+  while Length(Result) < ALength do Result := ' ' + Result;
+end;
+
 
 { TForm1 }
 
@@ -190,12 +204,16 @@ begin
             ok := true;
             break;
           except
+            on E:Exception do begin
+              inc(FErrCounter);
+              FErrLog.Add(Format('[%d] = %s', [FErrCounter, E.Message]));
+            end;
           end;
         finally
           MyWorkbook.Free;
         end;
       end;
-      if not ok then Log := Log + ' xxxx  ';
+      if not ok then Log := Log + LeftPad(Format('[%d]',[FErrCounter]),5) + '  ';
     end;
 
   finally
@@ -213,6 +231,7 @@ var
   Tm: DWORD;
   fName, S: string;
   k: Integer;
+  numCols: Integer;
 begin
   MyWorkbook := TsWorkbook.Create;
   try
@@ -220,6 +239,11 @@ begin
       Log := 'Test aborted';
       exit;
     end;
+
+    if CbSingleCol.Checked then
+      numCols := 1
+    else
+      numCols := COLCOUNT;
 
     MyWorksheet := MyWorkbook.AddWorksheet('Sheet1');
     MyWorkbook.Options := Options;
@@ -231,7 +255,7 @@ begin
       if boVirtualMode in Options then
       begin
         MyWorkbook.VirtualRowCount := Rows;
-        MyWorkbook.VirtualColCount := COLCOUNT;
+        MyWorkbook.VirtualColCount := numCols;
         case RgContent.ItemIndex of
           0: MyWorkbook.OnWriteCellData := @WriteCellStringHandler;
           1: MyWorkbook.OnWriteCellData := @WriteCellNumberHandler;
@@ -250,13 +274,13 @@ begin
             end;
           end;
           case RgContent.ItemIndex of
-            0: for ACol := 0 to COLCOUNT-1 do begin
+            0: for ACol := 0 to numCols-1 do begin
                  S := 'Xy' + IntToStr(ARow) + 'x' + IntToStr(ACol);
                  MyWorksheet.WriteUTF8Text(ARow, ACol, S);
                end;
-            1: for ACol := 0 to COLCOUNT-1 do
+            1: for ACol := 0 to numCols-1 do
                  MyWorksheet.WriteNumber(ARow, ACol, 1E5*ARow + ACol);
-            2: for ACol := 0 to COLCOUNT-1 do
+            2: for ACol := 0 to numCols-1 do
                  if (odd(ARow) and odd(ACol)) or odd(ARow+ACol) then
                  begin
                    S := 'Xy' + IntToStr(ARow) + 'x' + IntToStr(ACol);
@@ -267,8 +291,11 @@ begin
         end;
       end;
     except
-      on E: Exception do
-        Log := Log + format('xxxx   ', [(GetTickCount - Tm) / 1000]);
+      on E: Exception do begin
+        inc(FErrCounter);
+        FErrLog.Add(Format('[%d] = %s', [FErrCounter, E.Message]));
+        Log := Log + LeftPad(Format('[%d]',[FErrCounter]),5) + '  ';
+      end;
     end;
 
     fname :=  Trim(Log);
@@ -332,11 +359,15 @@ var
   i, len: Integer;
   s: String;
   rows: Integer;
+  numCols: Integer;
 begin
   WriteToIni;
 
   FEscape := false;
   EnableControls(false);
+  FErrLog.Clear;
+
+  if CbSingleCol.Checked then numCols := 1 else numCols := COLCOUNT;
 
   Memo.Append     ('Running: Reading TsWorkbook from various file formats');
   Memo.Append     ('         Worksheet contains ' + CONTENT_TEXT[RgContent.ItemIndex]);
@@ -370,7 +401,7 @@ begin
         continue;
 
       rows := GetRowCount(i);
-      s := Format('%7.0nx%d', [1.0*rows, COLCOUNT]);
+      s := Format('%7.0nx%d', [1.0*rows, numCols]);
 
       if CbVirtualModeOnly.Checked then begin
         RunReadTest(2, s + '  [boVM      ]', [boVirtualMode]);
@@ -384,6 +415,8 @@ begin
 
       Memo.Append(DupeString('-', len));
     end;
+    if FErrLog.Text <> '' then
+      Memo.Append(FErrLog.Text);
     Memo.Append('Ready');
   finally
     Memo.Append('');
@@ -391,16 +424,27 @@ begin
   end;
 end;
 
+procedure TForm1.BtnSaveResultsClick(Sender: TObject);
+begin
+  if SaveDialog.Filename <> '' then
+    SaveDialog.InitialDir := ExtractFileDir(SaveDialog.Filename);
+  if SaveDialog.Execute then
+    Memo.Lines.SaveToFile(SaveDialog.Filename);
+end;
+
 procedure TForm1.BtnWriteClick(Sender: TObject);
 var
   Rows: integer;
   s: String;
   i, len: Integer;
+  numCols: Integer;
 begin
   WriteToIni;
 
   FEscape := false;
   EnableControls(false);
+  FErrLog.Clear;
+  if CbSingleCol.Checked then numCols := 1 else numCols := COLCOUNT;
 
   Memo.Append     ('Running: Building TsWorkbook and writing to different file formats');
   Memo.Append     ('         Worksheet contains ' + CONTENT_TEXT[RgContent.ItemIndex]);
@@ -433,7 +477,7 @@ begin
       if not CgRowCount.Checked[i] then
         continue;
       Rows := GetRowCount(i);
-      s := Format('%7.0nx%d', [1.0*Rows, COLCOUNT]);
+      s := Format('%7.0nx%d', [1.0*Rows, numCols]);
       if CbVirtualModeOnly.Checked then begin
         RunWriteTest(2, Rows, s + '  [boVM      ]', [boVirtualMode]);
         RunWriteTest(4, Rows, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
@@ -466,6 +510,7 @@ procedure TForm1.EnableControls(AEnable: Boolean);
 begin
   BtnWrite.Enabled := AEnable;
   BtnRead.Enabled := AEnable;
+  BtnSaveResults.Enabled := AEnable;
   RgContent.Enabled := AEnable;
   CgFormats.Enabled := AEnable;
   CgRowCount.Enabled := AEnable;
@@ -492,7 +537,14 @@ begin
   CgRowCount.Checked[rc30k] := true;
   CgRowCount.Checked[rc40k] := true;
 
+  FErrLog := TStringList.Create;
+
   ReadFromIni;
+end;
+
+procedure TForm1.FormDestroy(Sender: TObject);
+begin
+  FErrLog.Free;
 end;
 
 procedure TForm1.FormKeyPress(Sender: TObject; var Key: char);

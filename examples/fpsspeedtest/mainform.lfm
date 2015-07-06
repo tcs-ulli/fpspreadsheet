@@ -1,32 +1,33 @@
 object Form1: TForm1
   Left = 445
-  Height = 562
+  Height = 593
   Top = 178
-  Width = 764
+  Width = 780
   Caption = 'fpsSpeedTest'
-  ClientHeight = 562
-  ClientWidth = 764
+  ClientHeight = 593
+  ClientWidth = 780
   KeyPreview = True
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   OnKeyPress = FormKeyPress
   LCLVersion = '1.5'
   object StatusBar: TStatusBar
     Left = 0
     Height = 23
-    Top = 539
-    Width = 764
+    Top = 570
+    Width = 780
     Panels = <>
   end
   object Panel1: TPanel
     Left = 0
     Height = 52
     Top = 0
-    Width = 764
+    Width = 780
     Align = alTop
     BevelOuter = bvNone
     ClientHeight = 52
-    ClientWidth = 764
+    ClientWidth = 780
     TabOrder = 1
     object BtnWrite: TButton
       Left = 8
@@ -41,7 +42,7 @@ object Form1: TForm1
       Left = 184
       Height = 39
       Top = 6
-      Width = 576
+      Width = 488
       Anchors = [akTop, akLeft, akRight]
       AutoSize = False
       Caption = 'Press ESC to cancel when current file is completely written.'#13#10'This may take some time...'
@@ -58,15 +59,25 @@ object Form1: TForm1
       OnClick = BtnReadClick
       TabOrder = 1
     end
+    object BtnSaveResults: TButton
+      Left = 680
+      Height = 29
+      Top = 12
+      Width = 91
+      Anchors = [akTop, akRight]
+      Caption = 'Save results'
+      OnClick = BtnSaveResultsClick
+      TabOrder = 2
+    end
   end
   object ParameterPanel: TPanel
     Left = 0
-    Height = 483
+    Height = 514
     Top = 56
     Width = 182
     Align = alLeft
     BevelOuter = bvNone
-    ClientHeight = 483
+    ClientHeight = 514
     ClientWidth = 182
     TabOrder = 2
     object CbVirtualModeOnly: TCheckBox
@@ -161,20 +172,28 @@ object Form1: TForm1
         0700000002020202020202
       }
     end
+    object CbSingleCol: TCheckBox
+      Left = 16
+      Height = 19
+      Top = 480
+      Width = 96
+      Caption = 'Single column'
+      TabOrder = 4
+    end
   end
   object Bevel1: TBevel
     Left = 0
     Height = 4
     Top = 52
-    Width = 764
+    Width = 780
     Align = alTop
     Shape = bsTopLine
   end
   object Memo: TMemo
     Left = 182
-    Height = 483
+    Height = 514
     Top = 56
-    Width = 582
+    Width = 598
     Align = alClient
     Font.Height = -12
     Font.Name = 'Courier New'
@@ -182,5 +201,12 @@ object Form1: TForm1
     ParentFont = False
     ScrollBars = ssAutoVertical
     TabOrder = 3
+  end
+  object SaveDialog: TSaveDialog
+    DefaultExt = '.txt'
+    Filter = 'Text files (*.txt)|*.txt|All files (*.*)|*.*'
+    Options = [ofOverwritePrompt, ofPathMustExist, ofEnableSizing, ofViewDetail]
+    left = 708
+    top = 65
   end
 end

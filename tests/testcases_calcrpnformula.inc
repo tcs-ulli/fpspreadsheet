@@ -9,6 +9,8 @@
   MyWorksheet.WriteNumber  (1, 12,  1);          // M2
   MyWorksheet.WriteNumber  (1, 13,  2);          // N2
 
+  // Create an error in H2
+  MyWorksheet.WriteFormula (1, 7, '1/0');
 {------------------------------------------------------------------------------}
 {                            Basic operations                                  }
 {------------------------------------------------------------------------------}
@@ -52,7 +54,7 @@
 {!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!  DO NOT CHANGE THIS FORMULA - ITS RESULT (-9) IS HARD-CODED IN OTHER TESTS !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!}
-                          (*
+
   // Add cell values - relative addresses
   inc(Row);
   formula := 'B1+B2';
@@ -268,6 +270,20 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := FloatResult(cellB1*0.01);
 
+  // Exotic test case from OpenOffice test file
+  inc(Row);
+  formula := '200%%';
+  MyWorksheet.WriteUTF8Text(Row, 0, formula);
+  if UseRPNFormula then
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNNumber(200,
+      RPNFunc(fekPercent,
+      RPNFunc(fekPercent, nil)))))
+  else
+    MyWorksheet.WriteFormula(row, 1, formula);
+  SetLength(sollvalues, Row+1);
+  sollValues[Row] := FloatResult(0.02);
+
   // Power symbol
   inc(Row);
   formula := '2^0.5';
@@ -316,6 +332,23 @@
   MyWorksheet.WriteNumber(Row, 2, 4 * power(2, 0.5));
   SetLength(sollValues, Row+1);
   sollValues[Row] := FloatResult(4 * power(2, 0.5));
+
+  // Exotic sample from OpenOffice test files
+  inc(Row);
+  formula := '50%^200%';
+  MyWorksheet.WriteUTF8Text(Row, 0, formula);
+  if UseRPNFormula then
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNNumber(50.0,
+      RPNFunc(fekPercent,
+      RPNNumber(200.0,
+      RPNFunc(fekPercent,
+      RPNFunc(fekPower, nil)))))))
+  else
+    MyWorksheet.WriteFormula(Row, 1, formula);
+  MyWorksheet.WriteNumber(Row, 2, power(0.5, 2));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := FloatResult(power(0.5, 2));
 
   // Power function
   if AFormat <> sfExcel2 then begin
@@ -427,6 +460,21 @@
   MyWorksheet.WriteNumber(Row, 2, +cellB2);
   SetLength(sollValues, Row+1);
   sollValues[Row] := FloatResult(+cellB2);
+
+  // Exotic case from OpenOffice test files
+  inc(Row);
+  formula := '+-B2';
+  MyWorksheet.WriteUTF8Text(Row, 0, formula);
+  if UseRPNFormula then
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellvalue('B2',
+      RPNFunc(fekUMinus,
+      RPNFunc(fekUPlus, nil)))))
+  else
+    MyWorksheet.WriteFormula(Row, 1, formula);
+  MyWorksheet.WriteNumber(Row, 2, -cellB2);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := FloatResult(-cellB2);
 
   // String result
   inc(Row);
@@ -1364,11 +1412,9 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := FloatResult(logn(2, number));
 
-{ removed until new formula system supports missing arguments...
-
-  // LOG - valid result (2 arguments, base missing)
+  // LOG - error result (2 arguments, base missing)
   inc(Row);
-  formula := 'LOG(0.1, )';
+  formula := 'LOG(0.1,)';
   MyWorksheet.WriteUTF8Text(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1383,7 +1429,6 @@
     sollValues[Row] := FloatResult(0)
   else
     sollValues[Row] := ErrorResult(errOverflow);
-}
 
   // LOG - valid result (1 argument)
   inc(Row);
@@ -3001,7 +3046,7 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := StringResult('Ha');
   Myworksheet.WriteUTF8Text(Row, 2, sollValues[Row].ResString);
-         *)
+
   // LEFT (2 parameters, utf8)
   inc(Row);
   formula := 'LEFT("Ändern",3)';
@@ -3017,7 +3062,6 @@
   sollValues[Row] := StringResult('Änd');
   Myworksheet.WriteUTF8Text(Row, 2, sollValues[Row].ResString);
 
-             {  -- at the momement no missing arguments support
   // LEFT (2 parameters, 1 of them missing)
   inc(Row);
   formula := 'LEFT("Hallo world",)';
@@ -3032,7 +3076,7 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := StringResult('H');
   Myworksheet.WriteUTF8Text(Row, 2, sollValues[Row].ResString);
-}
+
   // LEFT (1 parameter)
   inc(Row);
   formula := 'LEFT("Hallo world")';
@@ -3169,10 +3213,9 @@
   sollValues[Row] := StringResult('ld');
   Myworksheet.WriteUTF8Text(Row, 2, sollValues[Row].ResString);
 
-{                      --- no missing parameter support now
   // RIGHT (2 parameters, one of them missing)
   inc(Row);
-  formula := 'RIGHT("Hallo world", )';
+  formula := 'RIGHT("Hallo world",)';
   MyWorksheet.WriteUTF8Text(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3184,7 +3227,6 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := StringResult('d');
   Myworksheet.WriteUTF8Text(Row, 2, sollValues[Row].ResString);
- }
 
   // RIGHT (1 parameter)
   inc(Row);
@@ -3444,8 +3486,37 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumberArg(MyWorkbook.GetWorksheetCount);
            *)
-  // IsBlank
 
+  // ERROR.TYPE
+(*               ---- fails for ODS ---> to be checked
+  inc(Row);
+  formula := 'ERROR.TYPE(A1)';
+  MyWorksheet.WriteUTF8Text(Row, 0, formula);
+  if UseRPNFormula then
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRef('A1',
+      RPNFUNC('ERROR.TYPE', nil))))
+  else
+    MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollvalues, Row+1);
+  sollValues[Row] := ErrorResult(errArgError);
+  MyWorksheet.WriteUTF8Text(Row, 2, '#N/A');
+
+  inc(Row);
+  formula := 'ERROR.TYPE(H2)';   // this cells contains "1/0" --> #DIV/0!
+  MyWorksheet.WriteUTF8Text(Row, 0, formula);
+  if UseRPNFormula then
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRef('H2',
+      RPNFUNC('ERROR.TYPE', nil))))
+  else
+    MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollvalues, Row+1);
+  sollValues[Row] := IntegerResult(ord(errDivideByZero));
+  MyWorksheet.WriteUTF8Text(Row, 2, IntToStr(ord(errDivideByZero)));
+  *)
+
+  // IsBlank
   inc(Row);
   formula := 'ISBLANK(A1)';
   MyWorksheet.WriteUTF8Text(Row, 0, formula);
@@ -3489,7 +3560,6 @@
   // IsErr
   inc(Row);
   formula := 'ISERR(H2)';
-  MyWorksheet.WriteFormula(1, 7, '1/0');   // Create an error in H2
   MyWorksheet.WriteUTF8Text(Row, 0, formula);
   if UseRPNFormula then
     myWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(

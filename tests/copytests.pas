@@ -339,7 +339,7 @@ begin
               SourceCells[i+(col-2)].UsedFormattingFields = MyWorksheet.ReadUsedFormatting(cell),
               'Used formatting fields mismatch, cell ' + CellNotation(myWorksheet, row, col)
             );
-            if (uffBackground in SourceCells[i].UsedFormattingFields) then
+            if (uffBackground in SourceCells[i+(col-2)].UsedFormattingFields) then
               CheckEquals(
                 SourceCells[i+(col-2)].BackgroundColor,
                 MyWorksheet.ReadBackgroundColor(cell),
@@ -408,7 +408,7 @@ begin
           end;
         6:
           begin
-            if row = 0 then
+            if (row = 0) or (i >= Length(SourceCells)) then
               expectedFormula := ''
             else
             begin

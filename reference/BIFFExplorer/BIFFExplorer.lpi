@@ -177,6 +177,7 @@
       <Unit10>
         <Filename Value="betypes.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="beTypes"/>
       </Unit10>
     </Units>
   </ProjectOptions>

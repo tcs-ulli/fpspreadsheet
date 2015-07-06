@@ -1,5 +1,6 @@
 {@@ ----------------------------------------------------------------------------
-  Utility functions and declarations for FPSpreadsheet
+  Unit fpsUtils provides a variety of <b>utility functions</b> used
+  throughout the fpspreadsheet library.
 
   LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
            distribution, for details about the license.
@@ -17,7 +18,7 @@ unit fpsutils;
 interface
 
 uses
-  Classes, SysUtils, StrUtils,
+  Classes, SysUtils, //StrUtils,
   fpstypes;
 
 // Exported types
@@ -1517,7 +1518,9 @@ begin
            (Pos('&lt;',   AppoSt) = 1) or
            (Pos('&gt;',   AppoSt) = 1) or
            (Pos('&quot;', AppoSt) = 1) or
-           (Pos('&apos;', AppoSt) = 1) then begin
+           (Pos('&apos;', AppoSt) = 1) or
+           (Pos('&#37;',  AppoSt) = 1)     // %
+        then begin
           //'&' is the first char of a special chat, it must not be converted
           WrkStr:=WrkStr + AText[Idx];
         end else begin
@@ -1528,6 +1531,7 @@ begin
       '>': WrkStr:=WrkStr + '&gt;';
       '"': WrkStr:=WrkStr + '&quot;';
       '''':WrkStr:=WrkStr + '&apos;';
+      '%': WrkStr:=WrkStr + '&#37;';
       {
       #10: WrkStr := WrkStr + '&#10;';
       #13: WrkStr := WrkStr + '&#13;';

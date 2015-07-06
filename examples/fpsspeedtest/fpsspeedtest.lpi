@@ -40,7 +40,6 @@
       <Unit0>
         <Filename Value="fpsspeedtest.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="fpsspeedtest"/>
       </Unit0>
       <Unit1>
         <Filename Value="mainform.pas"/>
@@ -48,7 +47,6 @@
         <ComponentName Value="Form1"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="mainform"/>
       </Unit1>
     </Units>
   </ProjectOptions>

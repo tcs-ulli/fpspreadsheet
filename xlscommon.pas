@@ -565,7 +565,8 @@ implementation
 
 uses
   AVL_Tree, Math, Variants,
-  {%H-}fpspatches, fpsStrings, fpsNumFormat, xlsConst, fpsrpn, fpsExprParser;
+  {%H-}fpspatches, fpsStrings, fpsClasses, fpsNumFormat, xlsConst,
+  fpsrpn, fpsExprParser;
 
 const
   { Helper table for rpn formulas:
@@ -3754,11 +3755,11 @@ begin
         lCell.ContentType := cctUTF8String;
         lCell.UTF8StringValue := VarToStrDef(value, '');
       end else
-      {if  Variants.VarIsBool(value) then
+      if VarIsBool(value) then
       begin
         lCell.ContentType := cctBool;
         lCell.BoolValue := value <> 0;
-      end else}
+      end else
         lCell.ContentType := cctEmpty;
       WriteCellToStream(AStream, @lCell);
       value := varNULL;

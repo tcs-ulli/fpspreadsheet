@@ -212,7 +212,13 @@ begin
     exit;
   end;
 
-  if Length(Args) = 2 then begin
+  if (Length(Args) = 2) then
+  begin
+    if (Args[1].ResultType = rtMissingArg) then
+    begin
+      Result := ErrorResult(errOverflow);  // #NUM! as tested by Excel
+      exit;
+    end;
     base := ArgToFloat(Args[1]);
     if base < 0 then begin
       Result := ErrorResult(errOverflow);  // #NUM!
@@ -574,7 +580,7 @@ begin
     n := ArgToInt(Args[1])
   else
     n := 1;
-  if Args[0].ResultType in [rtDateTime, rtFloat, rtInteger] then
+  if Args[0].ResultType in [rtCell, rtDateTime, rtFloat, rtInteger] then
     dt := ArgToDateTime(Args[0])
   else
   if Args[0].ResultType in [rtString] then
@@ -698,19 +704,19 @@ var
 begin
   s := ArgToString(Args[0]);
   if s = '' then
-    Result.ResultType := rtEmpty
+    Result := EmptyResult
+  else
+  if Length(Args) > 2 then
+    Result := ErrorResult(errArgError)
   else
   begin
     if Length(Args) = 1 then
       count := 1
     else
-    if Args[1].ResultType in [rtInteger, rtFloat] then
-      count := ArgToInt(Args[1])
+    if Args[1].ResultType = rtMissingArg then
+      count := 1
     else
-    begin
-      Result := ErrorResult(errWrongType);
-      exit;
-    end;
+      count := ArgToInt(Args[1]);
     Result := StringResult(UTF8LeftStr(s, count));
   end;
 end;
@@ -780,18 +786,19 @@ var
 begin
   s := ArgToString(Args[0]);
   if s = '' then
-    Result.ResultType := rtEmpty
-  else begin
+    Result := EmptyResult
+  else
+  if Length(Args) > 2 then
+    Result := ErrorResult(errArgError)
+  else
+  begin
     if Length(Args) = 1 then
       count := 1
     else
-    if Args[1].ResultType in [rtInteger, rtFloat] then
-      count := ArgToInt(Args[1])
+    if Args[1].ResultType = rtMissingArg then
+      count := 1
     else
-    begin
-      Result := ErrorResult(errWrongType);
-      exit;
-    end;
+      count := ArgToInt(Args[1]);
     Result := StringResult(UTF8RightStr(s, count));
   end;
 end;
@@ -1400,6 +1407,19 @@ begin
     Result := ErrorResult(errWrongType);
 end;
 
+procedure fpsERRORTYPE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+//  ERROR.TYPE(value)
+// returns the numeric representation of one of the errors in Excel.
+// "value" can be one of the following Excel error values
+//   #NULL! 	#DIV/0! 	#VALUE! 	#REF! 	#NAME? 	#NUM!   #N/A 	#GETTING_DATA
+begin
+  if (Args[0].ResultType = rtError) and (ord(Args[0].ResError) <= ord(errArgError))
+  then
+    Result := IntegerResult(ord(Args[0].ResError))
+  else
+    Result := EmptyResult; //ErrorResult(errArgError);
+end;
+
 procedure fpsISBLANK(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 //  ISBLANK( value )
 // Checks for blank or null values.
@@ -1683,6 +1703,7 @@ begin
     // Info functions
     cat := bcInfo;
     //AddFunction(cat, 'CELL',      '?', 'Sr',   INT_EXCEL_SHEET_FUNC_CELL,       @fpsCELL);
+    AddFunction(cat, 'ERROR.TYPE','I', '?',    INT_EXCEL_SHEET_FUNC_ERRORTYPE,  @fpsERRORTYPE);
     AddFunction(cat, 'ISBLANK',   'B', '?',    INT_EXCEL_SHEET_FUNC_ISBLANK,    @fpsISBLANK);
     AddFunction(cat, 'ISERR',     'B', '?',    INT_EXCEL_SHEET_FUNC_ISERR,      @fpsISERR);
     AddFunction(cat, 'ISERROR',   'B', '?',    INT_EXCEL_SHEET_FUNC_ISERROR,    @fpsISERROR);

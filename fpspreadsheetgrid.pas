@@ -1,14 +1,14 @@
-{ fpspreadsheetgrid }
-
 {@@ ----------------------------------------------------------------------------
-  Grid component which can load and write data from/to FPSpreadsheet documents.
+  Unit fpspreadsheet implements a <b>grid</b> component which can load and
+  write data from/to FPSpreadsheet documents.
+
   Can either be used alone or in combination with a TsWorkbookSource component.
-  The latter case requires less written code.
+  The latter method requires less written code.
 
-AUTHORS: Felipe Monteiro de Carvalho, Werner Pamler
+  AUTHORS: Felipe Monteiro de Carvalho, Werner Pamler
 
-LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
-         distribution, for details about the license.
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+           distribution, for details about the license.
 -------------------------------------------------------------------------------}
 unit fpspreadsheetgrid;
 
@@ -944,11 +944,10 @@ end;
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.CalcColWidth(AWidth: Single): Integer;
 var
-  w0: Integer = 10;
+  w0: Integer;
 begin
   Convert_sFont_to_Font(Workbook.GetFont(0), Canvas.Font);
-  if HandleAllocated then
-    w0 := Canvas.TextWidth('0');
+  w0 := Canvas.TextWidth('0');
   Result := Round(AWidth * w0);
 end;
 
@@ -3747,8 +3746,7 @@ begin
       RowCount := FInitRowCount + 1; //2;
       FixedCols := 1;
       FixedRows := 1;
-      if HandleAllocated then
-        ColWidths[0] := Canvas.TextWidth(' 999999 ');
+      ColWidths[0] := Canvas.TextWidth(' 999999 ');
     end else begin
       FixedCols := 0;
       FixedRows := 0;
@@ -3791,7 +3789,8 @@ begin
     FWorkbookSource.AddListener(self);
 
   FOwnsWorkbook := (FWorkbookSource = nil);
-  ListenerNotification([lniWorksheet, lniSelection]);
+  if not (csDestroying in ComponentState) then
+    ListenerNotification([lniWorksheet, lniSelection]);
 end;
 
 {@@ ----------------------------------------------------------------------------

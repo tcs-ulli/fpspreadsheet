@@ -10,6 +10,7 @@ uses
 const
   BIFFNODE_TXO_CONTINUE1 = 1;
   BIFFNODE_TXO_CONTINUE2 = 2;
+  BIFFNODE_SST_CONTINUE  = 3;
 
 type
   { Virtual tree node data }

@@ -230,10 +230,6 @@ begin
     SollNumberStrings[i, 5] := FormatFloat('0.00E+00', SollNumbers[i], fs);
     SollNumberStrings[i, 6] := FormatFloat('0', SollNumbers[i]*100, fs) + '%';
     SollNumberStrings[i, 7] := FormatFloat('0.00', SollNumbers[i]*100, fs) + '%';
-    {
-    SollNumberStrings[i, 8] := FormatCurr('"€"#,##0;("€"#,##0)', SollNumbers[i], fs);
-    SollNumberStrings[i, 9] := FormatCurr('"€"#,##0.00;("€"#,##0.00)', SollNumbers[i], fs);
-    }
     // Don't use FormatCurr for the next two cases because is reports the sign of
     // very small numbers inconsistenly with the spreadsheet applications.
     SollNumberStrings[i, 8] := FormatFloat('"€"#,##0;("€"#,##0)', SollNumbers[i], fs);
@@ -266,9 +262,9 @@ begin
     SolLDateTimeStrings[i, 3] := FormatDateTime(fs.LongTimeFormat, SollDateTimes[i], fs);
     SollDateTimeStrings[i, 4] := FormatDateTime(fs.ShortTimeFormat + ' am/pm', SollDateTimes[i], fs);   // dont't use "t" - it does the hours wrong
     SollDateTimeStrings[i, 5] := FormatDateTime(fs.LongTimeFormat + ' am/pm', SollDateTimes[i], fs);
-    SollDateTimeStrings[i, 6] := FormatDateTime(SpecialDateTimeFormat('dm', fs, false), SollDateTimes[i], fs);
-    SollDateTimeStrings[i, 7] := FormatDateTime(SpecialDateTimeFormat('my', fs, false), SollDateTimes[i], fs);
-    SollDateTimeStrings[i, 8] := FormatDateTime(SpecialDateTimeFormat('ms', fs, false), SollDateTimes[i], fs);
+    SollDateTimeStrings[i, 6] := FormatDateTime('dd/mmm', SollDateTimes[i], fs);
+    SollDateTimeStrings[i, 7] := FormatDateTime('mmm/yy', SollDateTimes[i], fs);
+    SollDateTimeStrings[i, 8] := FormatDateTime('nn:ss', SollDateTimes[i], fs);
 //    SollDateTimeStrings[i, 9] := FormatDateTime('[h]:mm:ss', SollDateTimes[i], fs, [fdoInterval]);
   end;
 
