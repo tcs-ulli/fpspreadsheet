@@ -5024,7 +5024,7 @@ begin
           lCell.ContentType := cctUTF8String;
           lCell.UTF8StringValue := VarToStrDef(value, '');
         end else
-        if VarIsBool(value) then
+        if VarType(value) = varboolean then
         begin
           lCell.ContentType := cctBool;
           lCell.BoolValue := value <> 0;
